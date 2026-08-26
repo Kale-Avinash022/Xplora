@@ -5,6 +5,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 [![Prisma](https://img.shields.io/badge/Prisma_ORM-5.22-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge&logo=sqlite)](https://www.sqlite.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 > **Xplora** is an end-to-end, full-stack AI-driven travel platform that transforms natural language prompts into fully customized, spatially optimized, multi-day trip itineraries. Built with Next.js 14 App Router, Prisma ORM, live travel APIs, mathematical recommendation scoring, and weather-aware automated safeguards.
 
@@ -170,6 +171,10 @@ Verify zero TypeScript compilation errors and production readiness:
 npx tsc --noEmit
 npm run build
 ```
+
+## 📜 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for full details.
 
 ---
 
