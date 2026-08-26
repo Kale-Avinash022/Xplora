@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sand-bg: #F4F1E6;
+  --sage-green: #526B57;
+  --forest-green: #263D32;
+  --warm-gold: #C6A96B;
+  --main-text: #292A25;
+  --white: #FFFFFF;
+  --soft-border: #E1DDD1;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--sand-bg);
+  color: var(--main-text);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* ========================================
+   DAY / NIGHT DARK MODE THEME SYSTEM
+   ======================================== */
+.dark {
+  --sand-bg: #0F172A;
+  --sage-green: #38BDF8;
+  --forest-green: #0284C7;
+  --warm-gold: #F59E0B;
+  --main-text: #FFFFFF;
+  --white: #1E293B;
+  --soft-border: #334155;
+}
+
+.dark,
+.dark body,
+.dark p,
+.dark span,
+.dark label,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark div,
+.dark button,
+.dark a,
+.dark input,
+.dark select {
+  color: #FFFFFF !important;
+}
+
+.dark body {
+  background-color: #0F172A !important;
+}
+
+.dark .bg-white {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+.dark header {
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+.dark .text-\[\#263D32\],
+.dark .text-\[\#292A25\],
+.dark .text-\[\#526B57\],
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark .text-slate-900,
+.dark .text-black {
+  color: #FFFFFF !important;
+}
+
+.dark input,
+.dark select {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-\[\#F4F1E6\] {
+  background-color: #1E293B !important;
+}
+
+.dark .bg-\[\#F4F1E6\]\/50,
+.dark .bg-\[\#F4F1E6\]\/60 {
+  background-color: #1E293B !important;
+}
+
+.dark .border-\[\#E1DDD1\] {
+  border-color: #334155 !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sand-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--warm-gold);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sage-green);
+}
+
+/* ========================================
+   TRUE CONTINUOUS INFINITE MARQUEE
+   ======================================== */
+
+.marquee-viewport {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-track {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 16px;
+  width: max-content;
+  animation: marquee-continuous 55s linear infinite;
+}
+
+.marquee-viewport:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-card {
+  flex-shrink: 0;
+}
+
+@keyframes marquee-continuous {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
+  .marquee-track {
+    gap: 12px;
+  }
+
+  .marquee-card>div {
+    width: 240px !important;
+    height: 280px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .marquee-card>div {
+    width: 220px !important;
+    height: 260px !important;
+  }
+}

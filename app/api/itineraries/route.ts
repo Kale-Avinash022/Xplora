@@ -1,0 +1,96 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    const itineraries = await prisma.itinerary.findMany({
+      where: userId ? { userId } : undefined,
+      include: {
+        dayPlans: {
+          include: {
+            activities: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json(itineraries, { status: 200 });
+  } catch (error) {
+    console.error('Fetch Itineraries API Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch itineraries' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { title, destination, durationDays, budget, currency = 'INR', travelStyle = 'General', userId, dayPlans } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in to save itineraries to your account.' },
+        { status: 401 }
+      );
+    }
+
+    if (!title || !destination || !dayPlans) {
+      return NextResponse.json(
+        { error: 'Missing required itinerary fields' },
+        { status: 400 }
+      );
+    }
+
+    const savedItinerary = await prisma.itinerary.create({
+      data: {
+        title,
+        destination,
+        durationDays: Number(durationDays),
+        budget: Number(budget),
+        currency,
+        travelStyle,
+        userId: userId,
+        dayPlans: {
+          create: dayPlans.map((dp: any) => ({
+            dayNumber: dp.dayNumber,
+            summary: dp.summary,
+            activities: {
+              create: dp.activities.map((act: any) => ({
+                timeSlot: act.timeSlot,
+                title: act.title,
+                description: act.description,
+                category: act.category || 'Sightseeing',
+                cost: Number(act.cost) || 0,
+                location: act.location,
+              })),
+            },
+          })),
+        },
+      },
+      include: {
+        dayPlans: {
+          include: {
+            activities: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      { message: 'Itinerary saved successfully!', itinerary: savedItinerary },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Save Itinerary API Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to save itinerary' },
+      { status: 500 }
+    );
+  }
+}
