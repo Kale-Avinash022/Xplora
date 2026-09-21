@@ -1207,12 +1207,12 @@ export default function Home() {
         {/* Booking Tabs */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden" style={{ border: '1px solid #E1DDD1' }}>
           {/* Tab Headers */}
-          <div className="flex" style={{ borderBottom: '2px solid #E1DDD1' }}>
+          <div className="flex overflow-x-auto no-scrollbar" style={{ borderBottom: '2px solid #E1DDD1' }}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-4 text-base font-semibold transition ${
+                className={`flex-1 min-w-[110px] sm:min-w-[130px] flex items-center justify-center gap-2 py-3.5 sm:py-4 px-3 text-sm sm:text-base font-semibold transition whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'text-white border-b-4'
                     : 'hover:bg-[#F4F1E6]'
@@ -1225,15 +1225,15 @@ export default function Home() {
                   color: '#292A25'
                 }}
               >
-                <span className="text-2xl">{tab.icon}</span>
+                <span className="text-xl sm:text-2xl">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
           </div>
 
           {/* Booking Form */}
-          <div className="p-8">
-            <div className={`grid ${showToField ? 'grid-cols-[1fr,auto,1fr,1fr,1fr,1fr]' : 'grid-cols-4'} gap-4 items-end`}>
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${showToField ? 'lg:grid-cols-3 xl:grid-cols-[1.2fr,auto,1.2fr,1fr,1fr,1.2fr]' : 'lg:grid-cols-4'} gap-4 items-end`}>
               {/* From */}
               <div className="relative">
                 <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.from}</label>
@@ -1271,18 +1271,21 @@ export default function Home() {
 
               {/* Swap Button - Centered between From and To */}
               {showToField && (
-                <button
-                  onClick={swapCities}
-                  className="mb-1 p-3 text-white rounded-xl transition shadow-md"
-                  style={{ backgroundColor: '#C6A96B' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#C6A96B'}
-                  title="Swap cities"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                </button>
+                <div className="flex justify-center items-center sm:col-span-2 lg:col-span-3 xl:col-span-1 py-1 xl:py-0">
+                  <button
+                    type="button"
+                    onClick={swapCities}
+                    className="p-3 text-white rounded-xl transition shadow-md hover:scale-105"
+                    style={{ backgroundColor: '#C6A96B' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#C6A96B'}
+                    title="Swap cities"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                  </button>
+                </div>
               )}
 
               {/* To */}
@@ -1424,13 +1427,13 @@ export default function Home() {
         </div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-3 gap-6 mt-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4" style={{ borderColor: '#526B57' }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#526B57' }}>
             <div className="text-3xl mb-2">🎫</div>
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Track Ticket</h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Check your booking status</p>
           </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4" style={{ borderColor: '#C6A96B' }}>
+          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#C6A96B' }}>
             <div className="text-3xl mb-2">💰</div>
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Best Deals</h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Save on your bookings</p>
