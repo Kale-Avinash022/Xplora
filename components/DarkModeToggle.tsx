@@ -14,6 +14,7 @@ export function DarkModeToggle() {
   }, []);
 
   const toggleTheme = () => {
+    document.documentElement.classList.add('theme-transitioning');
     const nextDark = !isDark;
     setIsDark(nextDark);
     if (nextDark) {
@@ -23,6 +24,9 @@ export function DarkModeToggle() {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('xplora_theme', 'light');
     }
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transitioning');
+    }, 350);
   };
 
   return (
