@@ -16,9 +16,9 @@ interface CurrentUser {
 }
 
 interface SiteHeaderProps {
-  currentUser: CurrentUser | null
-  onLogout: () => void
-  onMyTrips: () => void
+  currentUser?: CurrentUser | null
+  onLogout?: () => void
+  onMyTrips?: () => void
 }
 
 // ─── Supported languages ──────────────────────────────────────────────────────
@@ -288,11 +288,11 @@ function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProp
                 href={href}
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
-                  focus:outline-none focus:ring-2 focus:ring-teal-700
+                  focus:outline-none focus:ring-2 focus:ring-[#C6A96B]
                   ${active
-                    ? 'bg-teal-700 text-white'
+                    ? 'shadow-sm'
                     : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                style={active ? {} : { color: 'var(--main-text)' }}
+                style={active ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--main-text)' }}
               >
                 {label}
               </Link>
@@ -326,7 +326,11 @@ function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProp
 
 // ─── Main SiteHeader Component ────────────────────────────────────────────────
 
-export function SiteHeader({ currentUser, onLogout, onMyTrips }: SiteHeaderProps) {
+export function SiteHeader({
+  currentUser = null,
+  onLogout = () => {},
+  onMyTrips = () => {},
+}: SiteHeaderProps = {}) {
   const pathname  = usePathname()
   const router    = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -383,11 +387,11 @@ export function SiteHeader({ currentUser, onLogout, onMyTrips }: SiteHeaderProps
                     key={href}
                     href={href}
                     className={`px-3 py-2 rounded-lg text-sm font-semibold transition
-                      focus:outline-none focus:ring-2 focus:ring-teal-700
+                      focus:outline-none focus:ring-2 focus:ring-[#C6A96B]
                       ${isActive(href)
-                        ? 'bg-teal-700 text-white'
+                        ? 'shadow-sm'
                         : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                    style={isActive(href) ? {} : { color: 'var(--forest-green)' }}
+                    style={isActive(href) ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
                     aria-current={isActive(href) ? 'page' : undefined}
                   >
                     {label}
@@ -403,10 +407,12 @@ export function SiteHeader({ currentUser, onLogout, onMyTrips }: SiteHeaderProps
               <Link
                 href="/wishlist"
                 aria-label="Wishlist"
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium
-                  hover:bg-[#F4F1E6] dark:hover:bg-slate-700 transition
-                  focus:outline-none focus:ring-2 focus:ring-teal-700 focus:ring-offset-1"
-                style={{ color: 'var(--forest-green)' }}
+                className={`hidden md:flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium
+                  transition focus:outline-none focus:ring-2 focus:ring-[#C6A96B] focus:ring-offset-1
+                  ${isActive('/wishlist')
+                    ? 'shadow-sm'
+                    : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
+                style={isActive('/wishlist') ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
               >
                 <HeartIcon className="w-5 h-5" />
                 <span className="hidden lg:inline text-xs font-bold">Wishlist</span>
@@ -417,11 +423,11 @@ export function SiteHeader({ currentUser, onLogout, onMyTrips }: SiteHeaderProps
                 href="/offers"
                 aria-label="Best deals and offers"
                 className={`hidden md:flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium
-                  transition focus:outline-none focus:ring-2 focus:ring-teal-700 focus:ring-offset-1
-                  ${isActive('/offers')
-                    ? 'bg-teal-700 text-white'
+                  transition focus:outline-none focus:ring-2 focus:ring-[#C6A96B] focus:ring-offset-1
+                  ${isActive('/offers') || pathname?.startsWith('/offers')
+                    ? 'shadow-sm'
                     : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                style={isActive('/offers') ? {} : { color: 'var(--forest-green)' }}
+                style={isActive('/offers') || pathname?.startsWith('/offers') ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
               >
                 <span className="text-base" aria-hidden="true">🏷️</span>
                 <span className="hidden lg:inline text-xs font-bold">Offers</span>
