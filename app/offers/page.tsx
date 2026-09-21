@@ -174,13 +174,14 @@ interface OfferCardProps {
 }
 
 function OfferCard({ offer, now }: OfferCardProps) {
-  const expiryDate = resolveExpiry(offer, now ?? new Date())
-  const formattedExpiry = formatExpiry(expiryDate)
-  const timeLeft = now ? getTimeLeft(expiryDate, now) : null
+  const isHydrated = now !== null
+  const expiryDate = isHydrated ? resolveExpiry(offer, now) : null
+  const formattedExpiry = expiryDate ? formatExpiry(expiryDate) : ''
+  const timeLeft = (isHydrated && expiryDate) ? getTimeLeft(expiryDate, now) : null
 
-  // Check if ending in under 24 hours
+  // Check if ending in under 24 hours (only computed after hydration to prevent mismatch)
   const isEndingToday = Boolean(
-    timeLeft && !timeLeft.expired && timeLeft.days === 0 && timeLeft.totalMs > 0
+    isHydrated && timeLeft && !timeLeft.expired && timeLeft.days === 0 && timeLeft.totalMs > 0
   )
 
   return (
@@ -189,8 +190,9 @@ function OfferCard({ offer, now }: OfferCardProps) {
       style={{ borderColor: '#E1DDD1' }}
     >
       {/* Top Header with Forest-to-Sage Gradient */}
-      <div
-        className="p-5 text-white relative overflow-hidden"
+      <Link
+        href={`/offers/${offer.id}`}
+        className="p-5 text-white relative overflow-hidden block focus:outline-none focus:ring-2 focus:ring-[#C6A96B]"
         style={{
           background: 'linear-gradient(135deg, #263D32 0%, #526B57 100%)',
         }}
@@ -209,8 +211,8 @@ function OfferCard({ offer, now }: OfferCardProps) {
             ))}
           </div>
 
-          {/* Ends today gold badge */}
-          {isEndingToday && (
+          {/* Ends today gold badge (rendered only after hydration) */}
+          {isHydrated && isEndingToday && (
             <span
               className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full shadow-xs shrink-0 animate-pulse"
               style={{ backgroundColor: '#C6A96B', color: '#263D32' }}
@@ -233,7 +235,7 @@ function OfferCard({ offer, now }: OfferCardProps) {
             {offer.title}
           </h2>
         </div>
-      </div>
+      </Link>
 
       {/* Card Body */}
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -260,46 +262,55 @@ function OfferCard({ offer, now }: OfferCardProps) {
           </div>
         )}
 
-        {/* Expiry and Live Time Left */}
-        <div className="pt-2 border-t text-xs space-y-1" style={{ borderColor: '#E1DDD1' }}>
-          <div className="text-[#526B57] flex items-center gap-1.5">
-            <svg
-              className="w-3.5 h-3.5 shrink-0 text-[#C6A96B]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <span>Expires {formattedExpiry}</span>
-          </div>
+        {/* Expiry and Live Time Left (zero hydration mismatch) */}
+        <div className="pt-2 border-t text-xs space-y-1 min-h-[44px]" style={{ borderColor: '#E1DDD1' }}>
+          {isHydrated && formattedExpiry ? (
+            <>
+              <div className="text-[#526B57] flex items-center gap-1.5">
+                <svg
+                  className="w-3.5 h-3.5 shrink-0 text-[#C6A96B]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span>Expires {formattedExpiry}</span>
+              </div>
 
-          {now && timeLeft && (
-            <div
-              className="flex items-center gap-1.5 font-semibold"
-              style={{ color: timeLeft.expired ? '#B91C1C' : '#263D32' }}
-            >
-              <svg
-                className="w-3.5 h-3.5 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>{formatTimeLeft(timeLeft)}</span>
+              {timeLeft && (
+                <div
+                  className="flex items-center gap-1.5 font-semibold"
+                  style={{ color: timeLeft.expired ? '#B91C1C' : '#263D32' }}
+                >
+                  <svg
+                    className="w-3.5 h-3.5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>{formatTimeLeft(timeLeft)}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[#526B57]/50 text-[11px] py-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#C6A96B]/60 animate-ping" />
+              <span>Checking offer validity...</span>
             </div>
           )}
         </div>
@@ -307,7 +318,7 @@ function OfferCard({ offer, now }: OfferCardProps) {
         {/* Full-width CTA Button */}
         <Link
           href={`/offers/${offer.id}`}
-          className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 hover:opacity-95 shadow-sm active:scale-[0.99]"
+          className="w-full text-center py-2.5 px-4 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 hover:opacity-95 shadow-sm active:scale-[0.99] cursor-pointer"
           style={{ backgroundColor: '#263D32', color: '#F4F1E6' }}
         >
           <span>{offer.cta}</span>

@@ -76,10 +76,11 @@ export default function OfferDetailPage() {
     )
   }
 
-  // Calculate live expiry and time left
-  const expiryDate = resolveExpiry(offer, now ?? new Date())
-  const formattedExpiry = formatExpiry(expiryDate)
-  const timeLeft = now ? getTimeLeft(expiryDate, now) : null
+  // Calculate live expiry and time left (only after hydration to prevent SSR mismatch)
+  const isHydrated = now !== null
+  const expiryDate = isHydrated ? resolveExpiry(offer, now) : null
+  const formattedExpiry = expiryDate ? formatExpiry(expiryDate) : ''
+  const timeLeft = (isHydrated && expiryDate) ? getTimeLeft(expiryDate, now) : null
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F4F1E6' }}>
@@ -149,10 +150,10 @@ export default function OfferDetailPage() {
             className="text-lg sm:text-xl font-bold mb-4"
             style={{ fontFamily: 'Playfair Display, serif', color: '#263D32' }}
           >
-            {timeLeft?.expired ? 'Offer Status' : 'Limited Time Offer — Grab It Before It Ends!'}
+            {isHydrated && timeLeft?.expired ? 'Offer Status' : 'Limited Time Offer — Grab It Before It Ends!'}
           </h2>
 
-          {timeLeft?.expired ? (
+          {isHydrated && timeLeft?.expired ? (
             <div
               className="py-4 px-6 rounded-xl font-bold text-sm sm:text-base inline-flex items-center gap-2"
               style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
@@ -165,26 +166,32 @@ export default function OfferDetailPage() {
               {/* Countdown Tiles */}
               <div className="grid grid-cols-4 gap-2 sm:gap-4 max-w-lg mx-auto mb-4">
                 <CountdownTile
-                  value={now && timeLeft ? String(timeLeft.days).padStart(2, '0') : '--'}
+                  value={isHydrated && timeLeft ? String(timeLeft.days).padStart(2, '0') : '--'}
                   label="Days"
                 />
                 <CountdownTile
-                  value={now && timeLeft ? String(timeLeft.hours).padStart(2, '0') : '--'}
+                  value={isHydrated && timeLeft ? String(timeLeft.hours).padStart(2, '0') : '--'}
                   label="Hours"
                 />
                 <CountdownTile
-                  value={now && timeLeft ? String(timeLeft.minutes).padStart(2, '0') : '--'}
+                  value={isHydrated && timeLeft ? String(timeLeft.minutes).padStart(2, '0') : '--'}
                   label="Minutes"
                 />
                 <CountdownTile
-                  value={now && timeLeft ? String(timeLeft.seconds).padStart(2, '0') : '--'}
+                  value={isHydrated && timeLeft ? String(timeLeft.seconds).padStart(2, '0') : '--'}
                   label="Seconds"
                 />
               </div>
 
               {/* Subtitle */}
               <p className="text-xs sm:text-sm font-medium text-[#526B57]">
-                Valid until <span className="font-bold text-[#263D32]">{formattedExpiry}</span>
+                {isHydrated && formattedExpiry ? (
+                  <>
+                    Valid until <span className="font-bold text-[#263D32]">{formattedExpiry}</span>
+                  </>
+                ) : (
+                  <span>Checking offer validity...</span>
+                )}
               </p>
             </>
           )}
@@ -354,13 +361,14 @@ function CountdownTile({ value, label }: { value: string; label: string }) {
 }
 
 function RelatedOfferCard({ offer, now }: { offer: Offer; now: Date | null }) {
-  const expiryDate = resolveExpiry(offer, now ?? new Date())
-  const formattedExpiry = formatExpiry(expiryDate)
+  const isHydrated = now !== null
+  const expiryDate = isHydrated ? resolveExpiry(offer, now) : null
+  const formattedExpiry = expiryDate ? formatExpiry(expiryDate) : ''
 
   return (
     <Link
       href={`/offers/${offer.id}`}
-      className="rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
+      className="rounded-2xl border bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C6A96B]"
       style={{ borderColor: '#E1DDD1' }}
     >
       <div
@@ -397,8 +405,8 @@ function RelatedOfferCard({ offer, now }: { offer: Offer; now: Date | null }) {
           </div>
         )}
 
-        <div className="pt-2 border-t text-[11px] text-[#526B57] flex items-center justify-between" style={{ borderColor: '#E1DDD1' }}>
-          <span>Expires {formattedExpiry}</span>
+        <div className="pt-2 border-t text-[11px] text-[#526B57] flex items-center justify-between min-h-[28px]" style={{ borderColor: '#E1DDD1' }}>
+          <span>{isHydrated && formattedExpiry ? `Expires ${formattedExpiry}` : 'Checking validity...'}</span>
           <span className="font-bold text-[#263D32] group-hover:translate-x-0.5 transition-transform">→</span>
         </div>
       </div>

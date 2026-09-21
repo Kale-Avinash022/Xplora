@@ -476,24 +476,21 @@ export function resolveExpiry(offer: Offer, now: Date): Date {
 }
 
 export function formatExpiry(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).formatToParts(date)
+  // Asia/Kolkata is UTC+5:30
+  const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000
+  const ist = new Date(date.getTime() + IST_OFFSET_MS)
 
-  const day = parts.find((p) => p.type === 'day')?.value ?? ''
-  const month = parts.find((p) => p.type === 'month')?.value ?? ''
-  const year = parts.find((p) => p.type === 'year')?.value ?? ''
-  const hour = parts.find((p) => p.type === 'hour')?.value ?? ''
-  const minute = parts.find((p) => p.type === 'minute')?.value ?? ''
-  const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toLowerCase()
+  const day = ist.getUTCDate()
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const month = months[ist.getUTCMonth()]
+  const year = ist.getUTCFullYear()
+  let hours = ist.getUTCHours()
+  const minutes = String(ist.getUTCMinutes()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'pm' : 'am'
+  hours = hours % 12
+  if (hours === 0) hours = 12
 
-  return `${day} ${month} ${year}, ${hour}:${minute} ${dayPeriod} IST`
+  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm} IST`
 }
 
 export function getTimeLeft(

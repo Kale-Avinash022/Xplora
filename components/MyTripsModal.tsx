@@ -2,12 +2,30 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { HeartButton } from '@/components/HeartButton';
 
 interface MyTripsModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: { id: string; name: string; email: string } | null;
   onSelectTrip: (trip: any) => void;
+}
+
+function toWishlistPlan(trip: any) {
+  if (!trip) return null;
+  return {
+    id: trip.id,
+    title: trip.title,
+    destination: trip.destination,
+    durationDays: trip.durationDays,
+    totalBudget: trip.budget ?? trip.totalBudget ?? 0,
+    estimatedCost: trip.estimatedCost ?? 0,
+    currency: trip.currency || 'INR',
+    travelStyle: trip.travelStyle || 'General',
+    weatherPreview: trip.weatherPreview || null,
+    weatherSwapNotice: trip.weatherSwapNotice || null,
+    dayPlans: trip.dayPlans || [],
+  };
 }
 
 export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyTripsModalProps) {
@@ -114,9 +132,12 @@ export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyT
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#526B57]/15 text-[#263D32]">
                         {trip.travelStyle || 'General'}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(trip.createdAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-500">
+                          {new Date(trip.createdAt).toLocaleDateString()}
+                        </span>
+                        <HeartButton plan={toWishlistPlan(trip)} size={18} />
+                      </div>
                     </div>
 
                     <h4 className="text-lg font-bold text-[#263D32] mb-1 line-clamp-1">

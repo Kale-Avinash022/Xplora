@@ -197,6 +197,8 @@ import { SUPPORTED_CURRENCIES, convertAmount } from '@/lib/currencyUtils'
 import { ExpenseTracker } from '@/components/ExpenseTracker'
 import { WeatherSwapBanner } from '@/components/WeatherSwapBanner'
 import { SiteHeader } from '@/components/SiteHeader'
+import { HeartButton } from '@/components/HeartButton'
+import { useWishlist } from '@/lib/useWishlist'
 
 // Destination Card Component for Continuous Marquee
 function DestinationCard({ 
@@ -352,6 +354,40 @@ export default function Home() {
         }
       })
       .catch((err) => console.error('Failed to verify session:', err))
+
+    // 3. Restore itinerary from sessionStorage if "Open in planner" was clicked
+    if (typeof window !== 'undefined') {
+      const openPlanStr = sessionStorage.getItem('xplora_open_plan')
+      if (openPlanStr) {
+        try {
+          const plan = JSON.parse(openPlanStr)
+          if (plan) {
+            setGeneratedPlan(plan)
+            if (plan.destination) setAiDestination(plan.destination)
+            if (plan.durationDays) setAiDuration(Number(plan.durationDays))
+            if (plan.totalBudget || plan.budget) setAiBudget(Number(plan.totalBudget || plan.budget))
+            if (plan.travelStyle) setAiTravelStyle(plan.travelStyle)
+            sessionStorage.removeItem('xplora_open_plan')
+            setTimeout(() => {
+              const el = document.getElementById('generated-itinerary-results')
+              if (el) el.scrollIntoView({ behavior: 'smooth' })
+            }, 150)
+          }
+        } catch (e) {
+          console.error('Failed to parse open plan from session:', e)
+        }
+      }
+    }
+
+    // 4. Open My Trips modal if redirected with ?myTrips=true
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('myTrips') === 'true') {
+        setShowMyTripsModal(true)
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
   }, [])
 
   const handleLogout = () => {
@@ -960,7 +996,7 @@ export default function Home() {
 
         {/* Generated Itinerary Section (Screen 3) */}
         {generatedPlan && (
-          <section className="mt-12 bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#E1DDD1' }}>
+          <section id="generated-itinerary-results" className="mt-12 bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#E1DDD1' }}>
             {/* Weather-Swap Banner Notice */}
             <WeatherSwapBanner weatherNotice={generatedPlan.weatherSwapNotice} />
 
@@ -1042,6 +1078,9 @@ export default function Home() {
                     <span>💾 Save to My Trips</span>
                   )}
                 </button>
+
+                {/* Wishlist Heart Button */}
+                <HeartButton plan={generatedPlan} size={22} className="bg-[#F4F1E6] border border-[#E1DDD1] shadow-xs" />
               </div>
             </div>
 
@@ -1433,11 +1472,18 @@ export default function Home() {
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Track Ticket</h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Check your booking status</p>
           </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#C6A96B' }}>
-            <div className="text-3xl mb-2">💰</div>
-            <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Best Deals</h3>
-            <p className="text-sm" style={{ color: '#526B57' }}>Save on your bookings</p>
-          </div>
+          <Link
+            href="/offers"
+            className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl block cursor-pointer group focus:outline-none focus:ring-2 focus:ring-[#C6A96B]"
+            style={{ borderColor: '#C6A96B' }}
+          >
+            <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">💰</div>
+            <h3 className="font-bold text-lg mb-1 flex items-center justify-between" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>
+              <span>Best Deals</span>
+              <span className="text-xs text-[#526B57] font-sans font-normal group-hover:translate-x-1 transition-transform">Explore →</span>
+            </h3>
+            <p className="text-sm" style={{ color: '#526B57' }}>Save on your bookings with exclusive coupons</p>
+          </Link>
           <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#526B57' }}>
             <div className="text-3xl mb-2">📞</div>
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Customer Support</h3>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { DarkModeToggle } from '@/components/DarkModeToggle'
 import { UserMenu } from '@/components/UserMenu'
+import { useWishlist } from '@/lib/useWishlist'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,9 +201,10 @@ interface MobileDrawerProps {
   onClose: () => void
   onMyTrips: () => void
   pathname: string
+  wishlistCount?: number
 }
 
-function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProps) {
+function MobileDrawer({ isOpen, onClose, onMyTrips, pathname, wishlistCount = 0 }: MobileDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const closeRef  = useRef<HTMLButtonElement>(null)
 
@@ -228,9 +230,10 @@ function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProp
   if (!isOpen) return null
 
   const navLinks = [
+    { href: '/',          label: '🏠 Home' },
     { href: '/discover',  label: '🧭 Discover' },
-    { href: '/wishlist',  label: '❤️ Wishlist' },
     { href: '/offers',    label: '🏷️ Offers' },
+    { href: '/wishlist',  label: '❤️ Wishlist' },
   ]
 
   return (
@@ -287,14 +290,22 @@ function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProp
                 key={href}
                 href={href}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition
                   focus:outline-none focus:ring-2 focus:ring-[#C6A96B]
                   ${active
                     ? 'shadow-sm'
                     : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
                 style={active ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--main-text)' }}
               >
-                {label}
+                <span>{label}</span>
+                {href === '/wishlist' && wishlistCount > 0 && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-black"
+                    style={{ backgroundColor: '#C6A96B', color: '#263D32' }}
+                  >
+                    {wishlistCount}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -327,13 +338,17 @@ function MobileDrawer({ isOpen, onClose, onMyTrips, pathname }: MobileDrawerProp
 // ─── Main SiteHeader Component ────────────────────────────────────────────────
 
 export function SiteHeader({
-  currentUser = null,
-  onLogout = () => {},
-  onMyTrips = () => {},
+  currentUser: propUser,
+  onLogout: propLogout,
+  onMyTrips: propMyTrips,
 }: SiteHeaderProps = {}) {
   const pathname  = usePathname()
   const router    = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [internalUser, setInternalUser] = useState<CurrentUser | null>(null)
+
+  // Use passed prop if defined, else fallback to internal user
+  const currentUser = propUser !== undefined ? propUser : internalUser
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false) }, [pathname])
@@ -341,12 +356,58 @@ export function SiteHeader({
   // Keyboard shortcut: close drawer on navigation
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
 
+  // Auto-load session if not provided by parent component
+  useEffect(() => {
+    if (propUser === undefined && typeof window !== 'undefined') {
+      try {
+        const u = localStorage.getItem('xplora_user')
+        if (u) setInternalUser(JSON.parse(u))
+      } catch {}
+
+      fetch('/api/user/me')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.user) {
+            setInternalUser(data.user)
+            localStorage.setItem('xplora_user', JSON.stringify(data.user))
+          }
+        })
+        .catch(() => {})
+    }
+  }, [propUser])
+
+  const handleLogout = () => {
+    if (propLogout) {
+      propLogout()
+    } else {
+      localStorage.removeItem('xplora_user')
+      setInternalUser(null)
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
+      router.refresh()
+    }
+  }
+
+  const handleMyTrips = () => {
+    if (propMyTrips) {
+      propMyTrips()
+    } else {
+      router.push('/?myTrips=true')
+    }
+  }
+
+  const { count: wishlistCount } = useWishlist()
+
   const navLinks = [
     { href: '/',         label: 'Home' },
     { href: '/discover', label: 'Discover' },
+    { href: '/offers',   label: '🏷️ Offers' },
+    { href: '/wishlist', label: '❤️ Wishlist' },
   ]
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname === href || pathname?.startsWith(href)
+  }
 
   return (
     <>
@@ -382,56 +443,37 @@ export function SiteHeader({
 
               {/* Desktop nav links — hidden on mobile */}
               <nav className="hidden md:flex items-center gap-1" aria-label="Primary navigation">
-                {navLinks.map(({ href, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`px-3 py-2 rounded-lg text-sm font-semibold transition
-                      focus:outline-none focus:ring-2 focus:ring-[#C6A96B]
-                      ${isActive(href)
-                        ? 'shadow-sm'
-                        : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                    style={isActive(href) ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
-                    aria-current={isActive(href) ? 'page' : undefined}
-                  >
-                    {label}
-                  </Link>
-                ))}
+                {navLinks.map(({ href, label }) => {
+                  const active = isActive(href)
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition
+                        focus:outline-none focus:ring-2 focus:ring-[#C6A96B]
+                        ${active
+                          ? 'shadow-sm'
+                          : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
+                      style={active ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <span>{label}</span>
+                      {href === '/wishlist' && wishlistCount > 0 && (
+                        <span
+                          className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-black"
+                          style={active ? { backgroundColor: '#263D32', color: '#F4F1E6' } : { backgroundColor: '#C6A96B', color: '#263D32' }}
+                        >
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
               </nav>
             </div>
 
             {/* ── Right: actions ───────────────────────────────────────── */}
             <div className="flex items-center gap-1 sm:gap-2">
-
-              {/* Wishlist — desktop only */}
-              <Link
-                href="/wishlist"
-                aria-label="Wishlist"
-                className={`hidden md:flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium
-                  transition focus:outline-none focus:ring-2 focus:ring-[#C6A96B] focus:ring-offset-1
-                  ${isActive('/wishlist')
-                    ? 'shadow-sm'
-                    : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                style={isActive('/wishlist') ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
-              >
-                <HeartIcon className="w-5 h-5" />
-                <span className="hidden lg:inline text-xs font-bold">Wishlist</span>
-              </Link>
-
-              {/* Offers link — desktop only */}
-              <Link
-                href="/offers"
-                aria-label="Best deals and offers"
-                className={`hidden md:flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-sm font-medium
-                  transition focus:outline-none focus:ring-2 focus:ring-[#C6A96B] focus:ring-offset-1
-                  ${isActive('/offers') || pathname?.startsWith('/offers')
-                    ? 'shadow-sm'
-                    : 'hover:bg-[#F4F1E6] dark:hover:bg-slate-700'}`}
-                style={isActive('/offers') || pathname?.startsWith('/offers') ? { backgroundColor: '#C6A96B', color: '#263D32' } : { color: 'var(--forest-green)' }}
-              >
-                <span className="text-base" aria-hidden="true">🏷️</span>
-                <span className="hidden lg:inline text-xs font-bold">Offers</span>
-              </Link>
 
               {/* Language switcher — desktop only */}
               <div className="hidden md:block">
@@ -451,8 +493,8 @@ export function SiteHeader({
                     email: currentUser.email,
                     image: currentUser.image ?? null,
                   }}
-                  onLogout={onLogout}
-                  onMyTrips={onMyTrips}
+                  onLogout={handleLogout}
+                  onMyTrips={handleMyTrips}
                 />
               ) : (
                 <div className="hidden md:flex items-center gap-2">
@@ -512,8 +554,9 @@ export function SiteHeader({
         <MobileDrawer
           isOpen={drawerOpen}
           onClose={closeDrawer}
-          onMyTrips={onMyTrips}
+          onMyTrips={handleMyTrips}
           pathname={pathname}
+          wishlistCount={wishlistCount}
         />
       </div>
     </>
