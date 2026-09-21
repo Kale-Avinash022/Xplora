@@ -41,6 +41,7 @@ export async function POST(req: Request) {
           id: user.id,
           name: user.name,
           email: user.email,
+          image: user.image,
         },
       },
       { status: 200 }
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
 
     response.cookies.set({
       name: 'xplora_user',
-      value: JSON.stringify({ id: user.id, name: user.name, email: user.email }),
+      value: JSON.stringify({ id: user.id, name: user.name, email: user.email, image: user.image }),
       httpOnly: false,
       path: '/',
       maxAge: 60 * 60 * 24 * 7,

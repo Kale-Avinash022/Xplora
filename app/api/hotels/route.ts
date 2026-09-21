@@ -74,6 +74,17 @@ export async function GET(req: Request) {
   const destination = searchParams.get('destination') || searchParams.get('city') || 'Goa';
   const checkIn = searchParams.get('checkIn') || '2026-09-01';
 
+  if (process.env.LIVE_FLIGHTS_HOTELS === 'false') {
+    return NextResponse.json({
+      destination,
+      checkIn,
+      count: 0,
+      hotels: [],
+      unavailable: true,
+      notice: 'Live hotels search is temporarily unavailable.',
+    }, { status: 200 });
+  }
+
   const hotels = await fetchRealOrFallbackHotels(destination, checkIn);
   return NextResponse.json({ destination, checkIn, count: hotels.length, hotels }, { status: 200 });
 }
@@ -83,6 +94,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const destination = body.destination || body.city || 'Goa';
     const checkIn = body.checkIn || '2026-09-01';
+
+    if (process.env.LIVE_FLIGHTS_HOTELS === 'false') {
+      return NextResponse.json({
+        destination,
+        count: 0,
+        hotels: [],
+        unavailable: true,
+        notice: 'Live hotels search is temporarily unavailable.',
+      }, { status: 200 });
+    }
+
     const hotels = await fetchRealOrFallbackHotels(destination, checkIn);
     return NextResponse.json({ destination, count: hotels.length, hotels }, { status: 200 });
   } catch {

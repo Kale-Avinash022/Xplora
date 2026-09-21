@@ -14,8 +14,20 @@ model User {
   name        String
   email       String      @unique
   password    String
+  image       String?
   createdAt   DateTime    @default(now())
   itineraries Itinerary[]
+  avatar      UserAvatar?
+}
+
+model UserAvatar {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  data      Bytes
+  mimeType  String
+  sizeBytes Int
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Itinerary {
@@ -52,3 +64,19 @@ model Activity {
   dayPlanId   String
   dayPlan     DayPlan  @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
 }
+
+model PlaceCache {
+  key       String   @id
+  payload   String   // JSON stringified payload for SQLite compatibility
+  fetchedAt DateTime @default(now())
+}
+
+model ApiUsage {
+  id        String   @id @default(cuid())
+  provider  String
+  day       String   // Format: YYYY-MM-DD
+  count     Int      @default(0)
+
+  @@unique([provider, day])
+}
+

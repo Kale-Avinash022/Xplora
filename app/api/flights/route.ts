@@ -54,6 +54,18 @@ export async function GET(req: Request) {
   const to = searchParams.get('to') || 'Mumbai';
   const date = searchParams.get('date') || '2026-09-01';
 
+  if (process.env.LIVE_FLIGHTS_HOTELS === 'false') {
+    return NextResponse.json({
+      from,
+      to,
+      date,
+      count: 0,
+      flights: [],
+      unavailable: true,
+      notice: 'Live flights search is temporarily unavailable.',
+    }, { status: 200 });
+  }
+
   const flights = await fetchRealOrFallbackFlights(from, to, date);
   return NextResponse.json({ from, to, date, count: flights.length, flights }, { status: 200 });
 }
@@ -62,6 +74,19 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { from = 'Delhi', to = 'Mumbai', date = '2026-09-01' } = body;
+
+    if (process.env.LIVE_FLIGHTS_HOTELS === 'false') {
+      return NextResponse.json({
+        from,
+        to,
+        date,
+        count: 0,
+        flights: [],
+        unavailable: true,
+        notice: 'Live flights search is temporarily unavailable.',
+      }, { status: 200 });
+    }
+
     const flights = await fetchRealOrFallbackFlights(from, to, date);
     return NextResponse.json({ from, to, date, count: flights.length, flights }, { status: 200 });
   } catch {

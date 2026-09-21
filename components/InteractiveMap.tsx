@@ -3,12 +3,19 @@
 import React, { useState } from 'react';
 
 interface Activity {
+  id?: string;
   timeSlot: string;
   title: string;
   description: string;
   category: string;
+  kindLabel?: string;
   cost: number;
+  costLabel?: string;
   location: string;
+  mapsUrl?: string;
+  lat?: number;
+  lng?: number;
+  travelTimeFromPrev?: string;
 }
 
 interface DayPlan {
@@ -20,7 +27,12 @@ interface DayPlan {
 interface InteractiveMapProps {
   destination: string;
   dayPlans: DayPlan[];
+  geocodedCenter?: {
+    lat: number;
+    lng: number;
+  };
 }
+
 
 // Fast 100% Free Dynamic City Image & GPS Resolver
 export function getFreeCityImageAndCoords(cityName: string) {
@@ -87,6 +99,51 @@ export function getFreeCityImageAndCoords(cityName: string) {
       lng: 2.3522,
       image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=75',
     },
+    sikkim: {
+      lat: 27.3389,
+      lng: 88.6065,
+      image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1200&q=75',
+    },
+    gangtok: {
+      lat: 27.3389,
+      lng: 88.6065,
+      image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1200&q=75',
+    },
+    ladakh: {
+      lat: 34.1526,
+      lng: 77.5771,
+      image: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=1200&q=75',
+    },
+    leh: {
+      lat: 34.1526,
+      lng: 77.5771,
+      image: 'https://images.unsplash.com/photo-1581793745862-99fde7fa73d2?w=1200&q=75',
+    },
+    varanasi: {
+      lat: 25.3176,
+      lng: 82.9739,
+      image: 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=1200&q=75',
+    },
+    agra: {
+      lat: 27.1767,
+      lng: 78.0081,
+      image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=1200&q=75',
+    },
+    bangalore: {
+      lat: 12.9716,
+      lng: 77.5946,
+      image: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=1200&q=75',
+    },
+    bengaluru: {
+      lat: 12.9716,
+      lng: 77.5946,
+      image: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=1200&q=75',
+    },
+    hyderabad: {
+      lat: 17.385,
+      lng: 78.4867,
+      image: 'https://images.unsplash.com/photo-1605007493699-ce65834f8a00?w=1200&q=75',
+    },
     tokyo: {
       lat: 35.6762,
       lng: 139.6503,
@@ -110,10 +167,12 @@ export function getFreeCityImageAndCoords(cityName: string) {
   };
 }
 
-export function InteractiveMap({ destination, dayPlans }: InteractiveMapProps) {
+export function InteractiveMap({ destination, dayPlans, geocodedCenter }: InteractiveMapProps) {
   const [selectedDay, setSelectedDay] = useState<number>(1);
 
   const cityInfo = getFreeCityImageAndCoords(destination);
+  const displayLat = geocodedCenter?.lat ?? cityInfo.lat;
+  const displayLng = geocodedCenter?.lng ?? cityInfo.lng;
   const currentDayPlan = dayPlans?.find((d) => d.dayNumber === selectedDay) || dayPlans?.[0];
 
   return (
@@ -125,7 +184,7 @@ export function InteractiveMap({ destination, dayPlans }: InteractiveMapProps) {
             🗺️ Interactive Visual Route Map
           </h3>
           <p className="text-xs text-[#526B57]">
-            Visualizing activity locations & route pins for <span className="font-bold text-[#263D32]">{destination}</span>
+            Visualizing verified real activity locations & route pins for <span className="font-bold text-[#263D32]">{destination}</span>
           </p>
         </div>
 
@@ -161,10 +220,10 @@ export function InteractiveMap({ destination, dayPlans }: InteractiveMapProps) {
         {/* Top Info Overlay */}
         <div className="relative z-10 flex justify-between items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white/20 text-white border border-white/30 backdrop-blur-md shadow-md">
-            📍 GPS: {cityInfo.lat.toFixed(4)}° N, {cityInfo.lng.toFixed(4)}° E • {destination}
+            📍 GPS: {displayLat.toFixed(4)}° N, {displayLng.toFixed(4)}° E • {destination} Center
           </span>
           <span className="text-[11px] font-bold text-white bg-black/50 px-3 py-1 rounded-full border border-white/20 backdrop-blur-md">
-            🗺️ Live Route Pins
+            🗺️ OpenStreetMap Verified Pins
           </span>
         </div>
 
@@ -176,13 +235,18 @@ export function InteractiveMap({ destination, dayPlans }: InteractiveMapProps) {
               className="p-3.5 rounded-xl bg-white/90 hover:bg-white text-[#263D32] shadow-2xl backdrop-blur-md border border-white/60 transition transform hover:-translate-y-1"
             >
               <div className="flex items-center justify-between text-[11px] font-bold text-[#526B57] mb-1">
-                <span>📍 Pin #{idx + 1}</span>
+                <span>📍 Pin #{idx + 1} {act.lat && act.lng ? `(${act.lat.toFixed(2)}°, ${act.lng.toFixed(2)}°)` : ''}</span>
                 <span className="px-2 py-0.5 rounded text-[10px] uppercase bg-[#526B57]/15 text-[#526B57] font-extrabold">
-                  {act.category}
+                  {act.kindLabel || act.category}
                 </span>
               </div>
               <h5 className="text-xs font-extrabold text-black line-clamp-1">{act.title}</h5>
               <p className="text-[10px] font-semibold text-gray-600 line-clamp-1 mt-0.5">⏱️ {act.timeSlot}</p>
+              {act.travelTimeFromPrev && (
+                <p className="text-[10px] font-bold text-teal-700 dark:text-teal-300 mt-0.5">
+                  🚗 {act.travelTimeFromPrev}
+                </p>
+              )}
               <p className="text-[10px] font-bold text-[#526B57] line-clamp-1 mt-1 border-t pt-1 border-gray-200">
                 🏛️ {act.location}
               </p>

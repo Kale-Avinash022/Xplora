@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { convertAmount } from '@/lib/currencyUtils';
 
 interface ExpenseItem {
@@ -13,17 +13,91 @@ interface ExpenseItem {
 interface ExpenseTrackerProps {
   plannedBudget: number;
   currencyCode: string;
+  destination?: string;
+  dayPlans?: Array<{
+    dayNumber: number;
+    summary?: string;
+    activities: Array<{
+      title: string;
+      category: string;
+      cost: number;
+      timeSlot?: string;
+    }>;
+  }>;
 }
 
-export function ExpenseTracker({ plannedBudget, currencyCode }: ExpenseTrackerProps) {
+export function ExpenseTracker({
+  plannedBudget,
+  currencyCode,
+  destination = 'Trip',
+  dayPlans = [],
+}: ExpenseTrackerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    { id: 'exp-1', category: 'Hotel', title: 'Hotel Booking Deposit', amount: Math.round(plannedBudget * 0.3) },
-    { id: 'exp-2', category: 'Sightseeing', title: 'Guided Entry Tickets', amount: Math.round(plannedBudget * 0.1) },
-  ]);
+
+  // Generate real itinerary-based initial expenses if not saved
+  const storageKey = `xplora_expenses_${destination.toLowerCase().replace(/\s+/g, '_')}_${plannedBudget}`;
+
+  const getInitialExpenses = useCallback((): ExpenseItem[] => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (err) {
+        console.error('Error loading expenses from localStorage', err);
+      }
+    }
+
+    // Derive real expenses from generated itinerary activities
+    if (dayPlans && dayPlans.length > 0) {
+      const realItems: ExpenseItem[] = [];
+
+      dayPlans.forEach((day) => {
+        day.activities.forEach((act, idx) => {
+          if (act.cost && act.cost > 0) {
+            realItems.push({
+              id: `exp-day${day.dayNumber}-${idx}-${Date.now()}`,
+              category: act.category || 'Sightseeing',
+              title: `Day ${day.dayNumber}: ${act.title}`,
+              amount: act.cost,
+            });
+          }
+        });
+      });
+
+      if (realItems.length > 0) {
+        return realItems;
+      }
+    }
+
+    return [
+      { id: `exp-init-1`, category: 'Hotel', title: `${destination} Hotel & Lodging`, amount: Math.round(plannedBudget * 0.35) },
+      { id: `exp-init-2`, category: 'Sightseeing', title: `${destination} Activity Passes & Transport`, amount: Math.round(plannedBudget * 0.15) },
+    ];
+  }, [dayPlans, destination, plannedBudget, storageKey]);
+
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(getInitialExpenses);
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState('Food');
+
+  // Reset or re-derive expenses when destination or dayPlans change
+  React.useEffect(() => {
+    setExpenses(getInitialExpenses());
+  }, [getInitialExpenses]);
+
+  // Persist to localStorage whenever expenses change
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && expenses.length > 0) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(expenses));
+      } catch (err) {
+        console.error('Error saving expenses', err);
+      }
+    }
+  }, [expenses, storageKey]);
 
   const totalSpent = expenses.reduce((acc, item) => acc + item.amount, 0);
   const remaining = plannedBudget - totalSpent;

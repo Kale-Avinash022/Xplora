@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { fetchWithPolicy } from '@/lib/http/fetchPolicy';
+import { getOrSet, normalizeKey } from '@/lib/cache';
+import { CACHE_TTLS } from '@/lib/cache/ttls';
 
 export interface DailyForecast {
   day: string;
@@ -25,15 +28,21 @@ export interface WeatherDataResponse {
 }
 
 export async function fetchLiveWeather(city: string, startDate?: string): Promise<WeatherDataResponse> {
+  const cacheKey = normalizeKey('weather', `${city}:${startDate || 'now'}`);
+  return getOrSet(cacheKey, CACHE_TTLS.WEATHER_FORECAST, () => fetchLiveWeatherUncached(city, startDate));
+}
+
+async function fetchLiveWeatherUncached(city: string, startDate?: string): Promise<WeatherDataResponse> {
   const cleanCity = city.trim();
-  const apiKey = (process.env.WEATHER_API_KEY || process.env.NEXT_PUBLIC_WEATHER_API_KEY || '603f14f41b7744298223bafc3a6b9641').trim();
+  const apiKey = (process.env.WEATHER_API_KEY || process.env.NEXT_PUBLIC_WEATHER_API_KEY || '').trim();
 
   // 1. Try WeatherAPI.com if key is available
   if (apiKey) {
     try {
-      const wapiRes = await fetch(
+      const wapiRes = await fetchWithPolicy(
+        'weather',
         `http://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${encodeURIComponent(cleanCity)}&days=3&aqi=no`,
-        { cache: 'no-store', signal: AbortSignal.timeout(3000) }
+        { cache: 'no-store' }
       );
       if (wapiRes.ok) {
         const data = await wapiRes.json();
@@ -78,9 +87,10 @@ export async function fetchLiveWeather(city: string, startDate?: string): Promis
 
     // 2. Try OpenWeatherMap
     try {
-      const owmRes = await fetch(
+      const owmRes = await fetchWithPolicy(
+        'weather',
         `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cleanCity)}&units=metric&appid=${apiKey}`,
-        { cache: 'no-store', signal: AbortSignal.timeout(3000) }
+        { cache: 'no-store' }
       );
       if (owmRes.ok) {
         const data = await owmRes.json();
@@ -112,9 +122,10 @@ export async function fetchLiveWeather(city: string, startDate?: string): Promis
 
   // 3. Open-Meteo Keyless API (100% Free, Zero Config)
   try {
-    const geoRes = await fetch(
+    const geoRes = await fetchWithPolicy(
+      'weather',
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanCity)}&count=1&language=en&format=json`,
-      { cache: 'no-store', signal: AbortSignal.timeout(3000) }
+      { cache: 'no-store' }
     );
 
     if (geoRes.ok) {
@@ -122,9 +133,10 @@ export async function fetchLiveWeather(city: string, startDate?: string): Promis
       if (geoData.results && geoData.results.length > 0) {
         const { latitude, longitude, name } = geoData.results[0];
 
-        const weatherRes = await fetch(
+        const weatherRes = await fetchWithPolicy(
+          'weather',
           `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`,
-          { cache: 'no-store', signal: AbortSignal.timeout(3000) }
+          { cache: 'no-store' }
         );
 
         if (weatherRes.ok) {

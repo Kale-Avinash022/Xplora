@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { UnsplashProvider } from '@/lib/images/unsplash';
 
 export async function GET(req: Request) {
   try {
@@ -81,6 +82,37 @@ export async function POST(req: Request) {
         },
       },
     });
+
+    // Unsplash download tracking (server-side GET with Client-ID to downloadLocation, once per photo)
+    try {
+      const unsplashPhotosToTrack: { downloadLocation: string; photoId: string }[] = [];
+      for (const dp of dayPlans) {
+        if (Array.isArray(dp.activities)) {
+          for (const act of dp.activities) {
+            if (
+              act.image &&
+              act.image.provider === 'unsplash' &&
+              act.image.downloadLocation &&
+              act.image.id
+            ) {
+              unsplashPhotosToTrack.push({
+                downloadLocation: act.image.downloadLocation,
+                photoId: act.image.id,
+              });
+            }
+          }
+        }
+      }
+
+      // Track concurrently in background (non-blocking)
+      Promise.allSettled(
+        unsplashPhotosToTrack.map((item) =>
+          UnsplashProvider.trackDownload(item.downloadLocation, item.photoId)
+        )
+      ).catch(() => {});
+    } catch (trackErr) {
+      console.error('[Save Itinerary] Error tracking Unsplash downloads:', trackErr);
+    }
 
     return NextResponse.json(
       { message: 'Itinerary saved successfully!', itinerary: savedItinerary },

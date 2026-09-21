@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface MyTripsModalProps {
@@ -15,7 +15,7 @@ export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyT
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTrips = async () => {
+  const fetchTrips = useCallback(async () => {
     if (!currentUser) return;
     setIsLoading(true);
     setError(null);
@@ -33,13 +33,13 @@ export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyT
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     if (isOpen && currentUser) {
       fetchTrips();
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, fetchTrips]);
 
   if (!isOpen) return null;
 
@@ -99,7 +99,7 @@ export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyT
               <div className="text-5xl mb-3">🌴</div>
               <h4 className="text-lg font-bold text-[#263D32] mb-1">No Saved Trips Yet</h4>
               <p className="text-sm text-gray-500 mb-4">
-                Generate an AI trip itinerary and click "Save to My Trips" to see it stored here!
+                Generate an AI trip itinerary and click &quot;Save to My Trips&quot; to see it stored here!
               </p>
             </div>
           ) : (

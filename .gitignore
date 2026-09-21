@@ -1,49 +1,72 @@
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
+# Testing
 /coverage
 
-# next.js
+# Next.js
 /.next/
 /out/
 
-# production
+# Production
 /build
 
-# misc
+# Misc & OS files
 .DS_Store
+Thumbs.db
 *.pem
+*.key
+*.cert
+*.crt
 
-# debug
+# Debug & Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
-# local env files
+# Environment variables & secrets (Never commit!)
+.env
+.env.*
 .env*.local
+*.env
+backend/.env
+backend/.env.*
 !.env.example
+!backend/.env.example
 
-# database
+# Database & SQLite files
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 prisma/*.db
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# python
+# Python
 venv/
 .venv/
 backend/venv/
 __pycache__/
-*.pyc
+backend/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
 
-# zip files
+# Archives
 *.zip
+*.tar.gz

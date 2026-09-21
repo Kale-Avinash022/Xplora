@@ -1,7 +1,190 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import { ActivityCard } from '@/components/ActivityCard'
+
+// ─── Interactive Hero Heading Component (Task B) ──────────────────────────────
+interface FeatureItem {
+  id: string
+  phrase: string
+  tooltip: string
+}
+
+const HERO_FEATURES: FeatureItem[] = [
+  {
+    id: 'weather',
+    phrase: 'real-time weather forecasts',
+    tooltip: 'Live forecasts are checked for every day of your trip. If rain is likely, outdoor plans are swapped for indoor ones.',
+  },
+  {
+    id: 'flights',
+    phrase: 'verified flight options',
+    tooltip: 'Flight options are fetched live from connected services, with prices converted to your currency.',
+  },
+  {
+    id: 'hotels',
+    phrase: 'hotel bookings',
+    tooltip: 'Hotel options are fetched live and filtered to fit your budget and dates.',
+  },
+  {
+    id: 'mapping',
+    phrase: 'interactive visual route mapping',
+    tooltip: 'Each day\'s stops are grouped by location so you spend less time in transit, then drawn on a map.',
+  },
+]
+
+function HeroHeading() {
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+  const [openTooltipId, setOpenTooltipId] = useState<string | null>(null)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Check prefers-reduced-motion
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReducedMotion(mediaQuery.matches)
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches)
+    mediaQuery.addEventListener('change', handler)
+    return () => mediaQuery.removeEventListener('change', handler)
+  }, [])
+
+  // Auto spotlight: advances every 2.5s when not paused and reduced motion is false
+  useEffect(() => {
+    if (isPaused || prefersReducedMotion) return
+    const interval = setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % HERO_FEATURES.length)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [isPaused, prefersReducedMotion])
+
+  // Close tooltip on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenTooltipId(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Close tooltip on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpenTooltipId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handlePhraseHover = (id: string, index: number) => {
+    setIsPaused(true)
+    setActiveIdx(index)
+    setOpenTooltipId(id)
+  }
+
+  const handlePhraseLeave = () => {
+    setIsPaused(false)
+    setOpenTooltipId(null)
+  }
+
+  const handlePhraseFocus = (id: string, index: number) => {
+    setIsPaused(true)
+    setActiveIdx(index)
+    setOpenTooltipId(id)
+  }
+
+  const handlePhraseBlur = () => {
+    setIsPaused(false)
+    setOpenTooltipId(null)
+  }
+
+  const handlePhraseClick = (id: string, index: number) => {
+    setActiveIdx(index)
+    setOpenTooltipId((prev) => (prev === id ? null : id))
+  }
+
+  return (
+    <div ref={containerRef} className="text-center mb-8">
+      {/* 1. Badge with softly pulsing green dot */}
+      <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-[#263D32] dark:bg-slate-800 text-white shadow-xs mb-3 border border-white/20 dark:border-slate-700">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span>XPLORA Intelligence Engine v2.4</span>
+      </div>
+
+      {/* 2. Title with gradient and entrance animation */}
+      <h1
+        className={`text-4xl md:text-5xl font-extrabold tracking-tight mb-3 ${
+          prefersReducedMotion ? '' : 'animate-hero-entrance'
+        }`}
+        style={{
+          fontFamily: 'Playfair Display, serif',
+          background: 'linear-gradient(135deg, var(--forest-green, #263D32) 0%, var(--sage-green, #526B57) 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}
+      >
+        Intelligent Itinerary Generator
+      </h1>
+
+      {/* 3. Interactive Sentence with Accessible Spotlight & Tooltip */}
+      <p
+        className="text-sm md:text-base font-medium max-w-2xl mx-auto leading-relaxed relative"
+        style={{ color: 'var(--sage-green, #526B57)' }}
+      >
+        Architect personalized travel itineraries with{' '}
+        {HERO_FEATURES.map((feat, idx) => {
+          const isHighlighted = activeIdx === idx
+          const isTooltipOpen = openTooltipId === feat.id
+
+          return (
+            <span key={feat.id} className="relative inline-block">
+              <button
+                type="button"
+                aria-describedby={isTooltipOpen ? `hero-tooltip-${feat.id}` : undefined}
+                aria-expanded={isTooltipOpen}
+                onMouseEnter={() => handlePhraseHover(feat.id, idx)}
+                onMouseLeave={handlePhraseLeave}
+                onFocus={() => handlePhraseFocus(feat.id, idx)}
+                onBlur={handlePhraseBlur}
+                onClick={() => handlePhraseClick(feat.id, idx)}
+                className={`inline font-semibold transition-all duration-300 rounded px-1 -mx-0.5 border-b-2 border-dotted text-inherit text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-700 focus:ring-offset-1 ${
+                  isHighlighted
+                    ? 'bg-teal-100/70 dark:bg-teal-900/50 border-teal-700 dark:border-teal-400 text-[#263D32] dark:text-teal-200 shadow-xs'
+                    : 'border-[#526B57]/40 dark:border-slate-500 hover:border-teal-700'
+                }`}
+              >
+                {feat.phrase}
+              </button>
+              {idx < HERO_FEATURES.length - 1 ? (idx === 2 ? ', and ' : ', ') : '.'}
+
+              {/* 5. Tooltip Popover */}
+              {isTooltipOpen && (
+                <div
+                  id={`hero-tooltip-${feat.id}`}
+                  role="tooltip"
+                  className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 max-w-[calc(100vw-2.5rem)] p-3 rounded-xl bg-[#263D32] dark:bg-slate-900 text-white text-xs font-normal text-center shadow-xl border border-white/20 dark:border-slate-700 animate-in fade-in zoom-in-95 pointer-events-none"
+                >
+                  <p className="leading-snug">{feat.tooltip}</p>
+                  {/* Arrow tip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-[#263D32] dark:border-t-slate-900" />
+                </div>
+              )}
+            </span>
+          )
+        })}
+      </p>
+    </div>
+  )
+}
 import { WeatherCard } from '@/components/WeatherCard'
 import { MyTripsModal } from '@/components/MyTripsModal'
 import { FlightHotelResults } from '@/components/FlightHotelResults'
@@ -12,9 +195,8 @@ import { HotelOption } from '@/app/api/hotels/route'
 import { exportItineraryToPDF, exportToGoogleCalendar, exportToICS } from '@/lib/exportUtils'
 import { SUPPORTED_CURRENCIES, convertAmount } from '@/lib/currencyUtils'
 import { ExpenseTracker } from '@/components/ExpenseTracker'
-import { DarkModeToggle } from '@/components/DarkModeToggle'
-import { ConfirmParsedDetailsModal } from '@/components/ConfirmParsedDetailsModal'
 import { WeatherSwapBanner } from '@/components/WeatherSwapBanner'
+import { SiteHeader } from '@/components/SiteHeader'
 
 // Destination Card Component for Continuous Marquee
 function DestinationCard({ 
@@ -113,7 +295,7 @@ export default function Home() {
   const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false)
 
   // Auth User Session State
-  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; image?: string | null } | null>(null)
 
   // AI Itinerary Generator State
   const [aiDestination, setAiDestination] = useState('Goa')
@@ -122,6 +304,7 @@ export default function Home() {
   const [aiTravelStyle, setAiTravelStyle] = useState('Adventure')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedPlan, setGeneratedPlan] = useState<any>(null)
+  const [planErrorMsg, setPlanErrorMsg] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [authErrorMsg, setAuthErrorMsg] = useState<string | null>(null)
@@ -134,13 +317,19 @@ export default function Home() {
   const [selectedCurrency, setSelectedCurrency] = useState('INR')
 
   // Screen 2 & NLP Query State
-  const [nlQueryPrompt, setNlQueryPrompt] = useState('Plan a 4-day trip to Goa for 2 people under ₹30,000')
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [parsedDetailsData, setParsedDetailsData] = useState<any>(null)
-  const [clarifyingQuestionMsg, setClarifyingQuestionMsg] = useState<string | null>(null)
-  const [isParsingNL, setIsParsingNL] = useState(false)
+
+  // Screen 1 Form Validation State
+  const [formErrors, setFormErrors] = useState<{
+    destination?: string
+    travelDate?: string
+    duration?: string
+    budget?: string
+  }>({})
 
   useEffect(() => {
+    // 1. Immediate local session load
     const userStr = typeof window !== 'undefined' ? localStorage.getItem('xplora_user') : null
     if (userStr) {
       try {
@@ -149,6 +338,20 @@ export default function Home() {
         console.error('Failed to parse user session:', e)
       }
     }
+
+    // 2. Fetch fresh user data from server (reads DB, refreshes image even 100+ days later)
+    fetch('/api/user/me')
+      .then((res) => {
+        if (res.ok) return res.json()
+        return null
+      })
+      .then((data) => {
+        if (data?.user) {
+          setCurrentUser(data.user)
+          localStorage.setItem('xplora_user', JSON.stringify(data.user))
+        }
+      })
+      .catch((err) => console.error('Failed to verify session:', err))
   }, [])
 
   const handleLogout = () => {
@@ -157,12 +360,58 @@ export default function Home() {
     setSaveSuccess(false)
   }
 
+  const validatePlanInputs = (): boolean => {
+    const errors: {
+      destination?: string
+      travelDate?: string
+      duration?: string
+      budget?: string
+    } = {}
+
+    // 1. Destination is required
+    if (!aiDestination || !aiDestination.trim()) {
+      errors.destination = 'Destination is required.'
+    }
+
+    // 2. Schedule Date cannot be in the past
+    if (!aiTravelDate) {
+      errors.travelDate = 'Schedule date is required.'
+    } else {
+      const todayStr = new Date().toISOString().split('T')[0]
+      if (aiTravelDate < todayStr) {
+        errors.travelDate = 'Date cannot be in the past.'
+      }
+    }
+
+    // 3. Duration is a whole number from 1 to 30
+    const durationNum = Number(aiDuration)
+    if (!Number.isInteger(durationNum) || durationNum < 1 || durationNum > 30) {
+      errors.duration = 'Duration must be a whole number between 1 and 30.'
+    }
+
+    // 4. Budget is a positive number
+    const budgetNum = Number(aiBudget)
+    if (isNaN(budgetNum) || budgetNum <= 0) {
+      errors.budget = 'Max budget must be a positive number.'
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleGeneratePlan = async (overrideDest?: string, overrideBudget?: number) => {
-    const targetDest = overrideDest || aiDestination || tripInput || 'Goa'
+    // If not overriding programmatically, run form validation
+    if (!overrideDest) {
+      const isValid = validatePlanInputs()
+      if (!isValid) return
+    }
+
+    const targetDest = (overrideDest || aiDestination || 'Goa').trim()
     const targetBudget = overrideBudget || Number(aiBudget) || 25000
-    const requestedDays = Math.min(Math.max(Number(aiDuration) || 3, 1), 30)
+    const requestedDays = Math.min(Math.max(Math.round(Number(aiDuration)) || 3, 1), 30)
     setIsGenerating(true)
     setGeneratedPlan(null)
+    setPlanErrorMsg(null)
     setSaveSuccess(false)
     setAuthErrorMsg(null)
     try {
@@ -181,9 +430,12 @@ export default function Home() {
       const data = await res.json()
       if (res.ok) {
         setGeneratedPlan(data)
+      } else {
+        setPlanErrorMsg(data?.error || `We couldn't find verified places for ${targetDest}. Please try again.`)
       }
     } catch (err) {
       console.error('Failed to generate plan:', err)
+      setPlanErrorMsg('An unexpected network error occurred while generating the itinerary. Please try again.')
     } finally {
       setIsGenerating(false)
     }
@@ -234,34 +486,6 @@ export default function Home() {
       .then((data) => setHotelsResults(data.hotels || []))
       .catch((e) => console.error('Hotel search error:', e))
       .finally(() => setIsSearchLoading(false))
-  }
-
-  const handleParseNLQuery = async () => {
-    if (!nlQueryPrompt.trim() || isParsingNL) return
-    setIsParsingNL(true)
-    setClarifyingQuestionMsg(null)
-
-    try {
-      const res = await fetch('/api/parse-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: nlQueryPrompt }),
-      })
-      const data = await res.json()
-
-      if (res.ok) {
-        if (data.hasMissingFields) {
-          setClarifyingQuestionMsg(data.clarifyingQuestion)
-        } else {
-          setParsedDetailsData(data.entities)
-          setShowConfirmModal(true) // Activates Screen 2 in-page section
-        }
-      }
-    } catch (e) {
-      console.error('NLP Parse error:', e)
-    } finally {
-      setIsParsingNL(false)
-    }
   }
 
   const handleConfirmModalSubmit = (confirmed: any) => {
@@ -473,60 +697,11 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F4F1E6' }}>
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-sm shadow-sm" style={{ borderBottom: '2px solid #E1DDD1' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <img src="/logo.png" alt="XPLORA" className="h-16 w-16 rounded-full object-cover" />
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowMyTripsModal(true)}
-                className="px-4 py-2 hover:text-[#C6A96B] transition text-sm font-medium flex items-center gap-1.5" 
-                style={{ color: '#263D32' }}
-              >
-                🧳 My Trips
-              </button>
-              <button className="px-4 py-2 hover:text-[#C6A96B] transition text-sm font-medium" style={{ color: '#263D32' }}>
-                Offers
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 hover:text-[#C6A96B] transition text-sm font-medium" style={{ color: '#263D32' }}>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              </button>
-              {currentUser ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-[#263D32]">
-                    👤 Welcome, <span className="text-[#526B57]">{currentUser.name}</span>
-                  </span>
-                  <button
-                    onClick={handleLogout}
-                    className="px-4 py-1.5 text-xs font-semibold border rounded-lg transition hover:bg-red-50 text-red-600 border-red-200"
-                  >
-                    Logout
-                  </button>
-                  <DarkModeToggle />
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Link 
-                    href="/login" 
-                    className="px-5 py-2 text-white rounded-lg transition font-medium inline-block"
-                    style={{ backgroundColor: '#526B57' }} 
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#263D32'} 
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
-                  >
-                    Login / Sign Up
-                  </Link>
-                  <DarkModeToggle />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onMyTrips={() => setShowMyTripsModal(true)}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -535,50 +710,8 @@ export default function Home() {
           <div id="ai-trip-planner" className="max-w-4xl mx-auto">
             {/* Card Container */}
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border p-8 md:p-10" style={{ borderColor: '#E1DDD1' }}>
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-[#263D32] text-white shadow-xs mb-3 border border-white/20">
-                  <span className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span>
-                  <span>XPLORA Intelligence Engine v2.4</span>
-                </div>
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3" style={{ fontFamily: 'Playfair Display, serif', color: '#263D32' }}>
-                  Intelligent Itinerary Generator
-                </h1>
-                <p className="text-sm md:text-base font-medium max-w-xl mx-auto" style={{ color: '#526B57' }}>
-                  Architect personalized travel itineraries with real-time weather forecasts, verified flight options, hotel bookings, and interactive visual route mapping.
-                </p>
-              </div>
-
-              {/* Screen 1: Natural Language Query Input Box */}
-              <div className="mb-6 p-4 rounded-xl bg-[#F4F1E6]/60 border border-[#E1DDD1]">
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#526B57] mb-2">
-                  🧠 Screen 1 of 3: AI Natural Language Query
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={nlQueryPrompt}
-                    onChange={(e) => setNlQueryPrompt(e.target.value)}
-                    placeholder="e.g. Plan a 4-day trip to Goa for 2 people under ₹30,000..."
-                    className="flex-1 px-4 py-3 rounded-xl border bg-white font-medium text-sm text-[#263D32] focus:outline-none shadow-xs"
-                    style={{ borderColor: '#E1DDD1' }}
-                  />
-                  <button
-                    onClick={handleParseNLQuery}
-                    disabled={isParsingNL || !nlQueryPrompt.trim()}
-                    className="px-6 py-3 text-xs font-bold text-white rounded-xl shadow-md transition hover:scale-105 disabled:opacity-50 shrink-0"
-                    style={{ backgroundColor: '#526B57' }}
-                  >
-                    {isParsingNL ? 'AI Parsing...' : 'Parse & Confirm ➔'}
-                  </button>
-                </div>
-
-                {clarifyingQuestionMsg && (
-                  <div className="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-2">
-                    <span>🤔 AI Follow-up:</span>
-                    <span>{clarifyingQuestionMsg}</span>
-                  </div>
-                )}
-              </div>
+              {/* Task B: Interactive Hero Heading */}
+              <HeroHeading />
 
               {/* Screen 2: Confirm Parsed Details In-Page Section */}
               {showConfirmModal && parsedDetailsData && (
@@ -664,7 +797,8 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+              {/* Screen 1 Inputs: Destination, Schedule Date, Duration, Max Budget */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-5">
                 {/* Destination Input */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Destination</label>
@@ -672,10 +806,18 @@ export default function Home() {
                     type="text"
                     placeholder="e.g. Paris, Goa, Tokyo"
                     value={aiDestination}
-                    onChange={(e) => setAiDestination(e.target.value)}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    onChange={(e) => {
+                      setAiDestination(e.target.value)
+                      if (formErrors.destination) setFormErrors((prev) => ({ ...prev, destination: undefined }))
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium ${
+                      formErrors.destination ? 'border-red-500 focus:border-red-500' : ''
+                    }`}
+                    style={{ borderColor: formErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
                   />
+                  {formErrors.destination && (
+                    <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.destination}</p>
+                  )}
                 </div>
 
                 {/* Schedule Date */}
@@ -684,10 +826,18 @@ export default function Home() {
                   <input
                     type="date"
                     value={aiTravelDate}
-                    onChange={(e) => setAiTravelDate(e.target.value)}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    onChange={(e) => {
+                      setAiTravelDate(e.target.value)
+                      if (formErrors.travelDate) setFormErrors((prev) => ({ ...prev, travelDate: undefined }))
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium ${
+                      formErrors.travelDate ? 'border-red-500 focus:border-red-500' : ''
+                    }`}
+                    style={{ borderColor: formErrors.travelDate ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
                   />
+                  {formErrors.travelDate && (
+                    <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.travelDate}</p>
+                  )}
                 </div>
 
                 {/* Duration Typing Input */}
@@ -700,11 +850,19 @@ export default function Home() {
                     min={1}
                     max={30}
                     value={aiDuration}
-                    onChange={(e) => setAiDuration(Math.max(1, Number(e.target.value)))}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    onChange={(e) => {
+                      setAiDuration(Number(e.target.value))
+                      if (formErrors.duration) setFormErrors((prev) => ({ ...prev, duration: undefined }))
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium ${
+                      formErrors.duration ? 'border-red-500 focus:border-red-500' : ''
+                    }`}
+                    style={{ borderColor: formErrors.duration ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
                     placeholder="e.g. 3"
                   />
+                  {formErrors.duration && (
+                    <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.duration}</p>
+                  )}
                 </div>
 
                 {/* Budget Typing Input */}
@@ -714,41 +872,67 @@ export default function Home() {
                   </label>
                   <input
                     type="number"
-                    min={1000}
+                    min={1}
                     step={1000}
                     value={aiBudget}
-                    onChange={(e) => setAiBudget(Math.max(1000, Number(e.target.value)))}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    onChange={(e) => {
+                      setAiBudget(Number(e.target.value))
+                      if (formErrors.budget) setFormErrors((prev) => ({ ...prev, budget: undefined }))
+                    }}
+                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium ${
+                      formErrors.budget ? 'border-red-500 focus:border-red-500' : ''
+                    }`}
+                    style={{ borderColor: formErrors.budget ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
                     placeholder="e.g. 25000"
                   />
-                </div>
-
-                {/* Travel Style */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Travel Style</label>
-                  <select
-                    value={aiTravelStyle}
-                    onChange={(e) => setAiTravelStyle(e.target.value)}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  >
-                    <option value="Adventure">🧗 Adventure</option>
-                    <option value="Family">👨‍👩‍👧 Family</option>
-                    <option value="Solo">🎒 Solo Explorer</option>
-                    <option value="Luxury">✨ Luxury</option>
-                    <option value="Budget-Friendly">🌿 Budget Friendly</option>
-                  </select>
+                  {formErrors.budget && (
+                    <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.budget}</p>
+                  )}
                 </div>
               </div>
 
+              {/* Travel Style Chips: Adventure, Family, Solo Explorer, Luxury, Budget Friendly */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Travel Style</label>
+                <div className="flex flex-wrap gap-2.5">
+                  {[
+                    { key: 'Adventure', label: '🧗 Adventure' },
+                    { key: 'Family', label: '👨‍👩‍👧 Family' },
+                    { key: 'Solo Explorer', label: '🎒 Solo Explorer' },
+                    { key: 'Luxury', label: '✨ Luxury' },
+                    { key: 'Budget Friendly', label: '🌿 Budget Friendly' },
+                  ].map((style) => {
+                    const isSelected = aiTravelStyle === style.key || (style.key === 'Budget Friendly' && aiTravelStyle === 'Budget-Friendly')
+                    return (
+                      <button
+                        key={style.key}
+                        type="button"
+                        onClick={() => setAiTravelStyle(style.key)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 border ${
+                          isSelected
+                            ? 'bg-[#263D32] text-white border-[#263D32] shadow-sm scale-105'
+                            : 'bg-white text-[#526B57] border-[#E1DDD1] hover:border-[#526B57] hover:bg-[#F4F1E6]/40'
+                        }`}
+                      >
+                        {style.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Generate AI Trip Itinerary Button */}
               <button 
                 onClick={() => handleGeneratePlan()}
                 disabled={isGenerating}
-                className="w-full py-4 text-white font-bold rounded-lg transition shadow-lg hover:shadow-xl transform hover:scale-[1.01] flex items-center justify-center gap-2"
+                className="w-full py-4 text-white font-bold rounded-lg transition shadow-lg hover:shadow-xl transform hover:scale-[1.01] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
                 style={{ backgroundColor: '#526B57' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#263D32'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
+                onMouseEnter={(e) => {
+                  if (!isGenerating) e.currentTarget.style.backgroundColor = '#263D32'
+                }}
+                onMouseLeave={(e) => {
+                  if (!isGenerating) e.currentTarget.style.backgroundColor = '#526B57'
+                }}
               >
                 {isGenerating ? (
                   <>
@@ -756,12 +940,20 @@ export default function Home() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>AI Agent Crafting your Itinerary...</span>
+                    <span>Generating...</span>
                   </>
                 ) : (
                   <span>🚀 Generate AI Trip Itinerary</span>
                 )}
               </button>
+
+              {/* Verified Place Generation Error Banner */}
+              {planErrorMsg && (
+                <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-300 text-red-900 text-sm font-semibold flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <span>{planErrorMsg}</span>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -872,44 +1064,30 @@ export default function Home() {
                     <span className="text-2xl">💰</span>
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#526B57]">
-                        Budget Calculator Tracker
+                        Budget Allocation & Limit
                       </h4>
                       <p className="text-sm font-bold text-[#263D32]">
-                        Est. Cost: <span className="text-sm font-bold text-[#526B57]">₹{generatedPlan.estimatedCost?.toLocaleString('en-IN')}</span> / ₹{generatedPlan.totalBudget?.toLocaleString('en-IN')} {generatedPlan.currency}
+                        Known Fees: <span className="text-sm font-bold text-[#526B57]">
+                          ₹{generatedPlan.estimatedCost?.toLocaleString('en-IN') || 0}
+                          {generatedPlan.hasUnknownPricing ? ' + unknown' : ''}
+                        </span> / Max ₹{generatedPlan.totalBudget?.toLocaleString('en-IN')} {generatedPlan.currency}
                       </p>
                     </div>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${
-                    generatedPlan.estimatedCost <= generatedPlan.totalBudget 
-                      ? 'bg-[#526B57] text-white' 
-                      : 'bg-red-600 text-white'
-                  }`}>
-                    {generatedPlan.estimatedCost <= generatedPlan.totalBudget ? '✓ Within Budget' : '⚠️ Over Budget'}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 bg-[#526B57] text-white">
+                    Target: ₹{Math.round(generatedPlan.totalBudget / (generatedPlan.durationDays || 1)).toLocaleString('en-IN')} / Day
                   </span>
                 </div>
 
-                {/* Progress Bar & Summary Box */}
+                {/* Summary Box */}
                 <div className="p-3 rounded-lg bg-white border border-[#526B57]/20">
-                  <div className="flex justify-between items-center text-[11px] uppercase tracking-wider font-bold text-[#526B57] mb-1.5">
-                    <span>Budget Utilization</span>
-                    <span>{Math.min(100, Math.round((generatedPlan.estimatedCost / generatedPlan.totalBudget) * 100))}% Used</span>
+                  <div className="flex justify-between items-center text-[11px] uppercase tracking-wider font-bold text-[#526B57] mb-1">
+                    <span>Venue Entry Pricing</span>
+                    <span>{generatedPlan.estimatedCost > 0 ? `₹${generatedPlan.estimatedCost} Known` : 'OSM / Local Rates'}</span>
                   </div>
-
-                  <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden mb-2">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${Math.min(100, Math.round((generatedPlan.estimatedCost / generatedPlan.totalBudget) * 100))}%`,
-                        backgroundColor: generatedPlan.estimatedCost <= generatedPlan.totalBudget ? '#526B57' : '#ef4444'
-                      }}
-                    />
-                  </div>
-
-                  <div className="text-xs font-medium text-[#263D32]">
-                    {generatedPlan.estimatedCost <= generatedPlan.totalBudget 
-                      ? `🎉 Saved ₹${(generatedPlan.totalBudget - generatedPlan.estimatedCost)?.toLocaleString('en-IN')} within your maximum budget limit.`
-                      : '⚠️ Estimated cost exceeds max budget limit.'}
-                  </div>
+                  <p className="text-xs font-medium text-[#263D32]">
+                    Trip planned within your ₹{generatedPlan.totalBudget?.toLocaleString('en-IN')} limit. Verified entry fees are sourced from OpenStreetMap where available; other places show &quot;Price not available&quot;.
+                  </p>
                 </div>
               </div>
             </div>
@@ -927,6 +1105,7 @@ export default function Home() {
               <InteractiveMap 
                 destination={generatedPlan.destination} 
                 dayPlans={generatedPlan.dayPlans} 
+                geocodedCenter={generatedPlan.geocodedCenter}
               />
             )}
 
@@ -938,36 +1117,64 @@ export default function Home() {
             <div className="space-y-6">
               {generatedPlan.dayPlans?.map((dp: any) => (
                 <div key={dp.dayNumber} className="border rounded-xl p-6 bg-white shadow-sm" style={{ borderColor: '#E1DDD1' }}>
-                  <div className="flex justify-between items-center mb-4 border-b pb-3" style={{ borderColor: '#E1DDD1' }}>
-                    <h4 className="text-lg font-bold text-[#263D32]">
-                      Day {dp.dayNumber}: {dp.summary}
-                    </h4>
-                    <span className="text-xs px-3 py-1 rounded-full font-medium bg-[#526B57]/10 text-[#526B57]">
-                      {dp.activities.length} Activities
-                    </span>
+                  <div className="flex justify-between items-center mb-4 border-b pb-3 gap-2 flex-wrap" style={{ borderColor: '#E1DDD1' }}>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-lg font-bold text-[#263D32]">
+                        Day {dp.dayNumber}: {dp.summary}
+                      </h4>
+                      {dp.isDayTrip && (
+                        <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          Day Trip
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {dp.totalTravelKm ? (
+                        <span className="text-xs text-gray-500 font-medium">
+                          🚗 ~{dp.totalTravelKm} km transit
+                        </span>
+                      ) : null}
+                      <span className="text-xs px-3 py-1 rounded-full font-medium bg-[#526B57]/10 text-[#526B57]">
+                        {dp.activities.length} Activities
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {dp.activities?.map((act: any, idx: number) => (
-                      <div key={idx} className="p-4 rounded-lg bg-[#F4F1E6]/30 border border-[#E1DDD1] flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white text-[#526B57] border border-[#E1DDD1]">
-                              {act.timeSlot}
-                            </span>
-                            <span className="text-xs font-bold text-[#C6A96B]">₹{act.cost?.toLocaleString('en-IN')}</span>
-                          </div>
-                          <h5 className="font-bold text-sm text-[#292A25] mb-1">{act.title}</h5>
-                          <p className="text-xs text-gray-600 mb-2">{act.description}</p>
-                        </div>
-                        <div className="text-[11px] font-medium text-gray-500 flex items-center gap-1 mt-2 border-t pt-2" style={{ borderColor: '#E1DDD1' }}>
-                          <span>📍 {act.location}</span>
-                        </div>
-                      </div>
+                      <ActivityCard
+                        key={act.id || idx}
+                        activity={act}
+                        destination={generatedPlan.destination}
+                      />
                     ))}
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Photo Provider Attribution & OpenTripMap / OpenStreetMap Attribution */}
+            <div className="mt-8 pt-4 border-t text-center text-xs text-gray-500 dark:text-gray-400 space-y-1.5" style={{ borderColor: '#E1DDD1' }}>
+              {/* Show only providers actually used in that trip */}
+              {generatedPlan.usedImageProviders && generatedPlan.usedImageProviders.length > 0 && (
+                <p className="font-medium text-gray-600 dark:text-gray-300">
+                  Photos provided by{' '}
+                  {generatedPlan.usedImageProviders.includes('pexels') && generatedPlan.usedImageProviders.includes('unsplash') ? (
+                    <>
+                      <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#263D32]">Pexels</a>
+                      {' and '}
+                      <a href="https://unsplash.com?utm_source=xplora&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#263D32]">Unsplash</a>
+                    </>
+                  ) : generatedPlan.usedImageProviders.includes('pexels') ? (
+                    <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#263D32]">Pexels</a>
+                  ) : generatedPlan.usedImageProviders.includes('unsplash') ? (
+                    <a href="https://unsplash.com?utm_source=xplora&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#263D32]">Unsplash</a>
+                  ) : null}
+                </p>
+              )}
+              <p>
+                Places data: <a href="https://opentripmap.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">OpenTripMap</a>, © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">OpenStreetMap contributors</a> (ODbL)
+              </p>
             </div>
           </section>
         )}
@@ -978,7 +1185,7 @@ export default function Home() {
             <h2 className="text-3xl font-bold mb-2" style={{ fontFamily: 'Playfair Display, serif', color: '#263D32' }}>
               Popular Destinations
             </h2>
-            <p style={{ color: '#526B57' }}>Explore India's most beautiful destinations • Click any card to plan a trip with AI!</p>
+            <p style={{ color: '#526B57' }}>Explore India&apos;s most beautiful destinations • Click any card to plan a trip with AI!</p>
           </div>
           
           {/* Continuous Marquee Container */}
@@ -1228,10 +1435,20 @@ export default function Home() {
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Best Deals</h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Save on your bookings</p>
           </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4" style={{ borderColor: '#526B57' }}>
+          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#526B57' }}>
             <div className="text-3xl mb-2">📞</div>
             <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Customer Support</h3>
-            <p className="text-sm" style={{ color: '#526B57' }}>24/7 assistance available</p>
+            <p className="text-sm font-medium mb-3" style={{ color: '#526B57' }}>24/7 assistance available</p>
+            <div className="space-y-1 text-xs border-t pt-2.5" style={{ borderColor: '#E1DDD1' }}>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-[#263D32]">✉️ Email:</span>
+                <a href="mailto:xploraAI@gmail.com" className="hover:underline text-[#526B57] font-medium">xploraAI@gmail.com</a>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-[#263D32]">📱 Contact:</span>
+                <a href="tel:+918007595006" className="hover:underline text-[#526B57] font-medium">+91 8007595006</a>
+              </div>
+            </div>
           </div>
         </div>
       </main>

@@ -228,7 +228,7 @@ export default function LoginPage() {
 
             {/* Sign Up Link */}
             <p className="text-center mt-6" style={{ color: '#526B57' }}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/signup" className="font-semibold transition" style={{ color: '#C6A96B' }}>
                 Create Account
               </Link>
