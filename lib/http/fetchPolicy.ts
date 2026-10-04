@@ -8,7 +8,11 @@ export type ProviderName =
   | 'weather'
   | 'overpass'
   | 'llm'
-  | 'flights_hotels';
+  | 'flights_hotels'
+  | 'serpapi_flights'
+  | 'serpapi_hotels'
+  | 'gemini_chat'
+  | 'qrail';
 
 interface ProviderPolicy {
   timeoutMs: number;
@@ -23,6 +27,10 @@ const PROVIDER_POLICIES: Record<ProviderName, ProviderPolicy> = {
   overpass: { timeoutMs: 12000, allowRetry: false },
   llm: { timeoutMs: 25000, allowRetry: false },
   flights_hotels: { timeoutMs: 6000, allowRetry: false },
+  serpapi_flights: { timeoutMs: 8000, allowRetry: false },
+  serpapi_hotels: { timeoutMs: 8000, allowRetry: false },
+  gemini_chat: { timeoutMs: 15000, allowRetry: false },
+  qrail: { timeoutMs: 8000, allowRetry: true },
 };
 
 interface CircuitState {
@@ -164,7 +172,8 @@ export async function fetchWithPolicy(
     }
   }
 
-  throw lastError || new Error(`fetchWithPolicy failed for ${provider} at ${url}`);
+  const sanitizedUrl = url.replace(/([?&](?:key|api_key|appid|token|auth)=)[^&]+/gi, '$1REDACTED');
+  throw lastError || new Error(`fetchWithPolicy failed for ${provider} at ${sanitizedUrl}`);
 }
 
 /**

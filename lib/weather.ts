@@ -34,7 +34,7 @@ export async function fetchLiveWeather(city: string, startDate?: string): Promis
 
 async function fetchLiveWeatherUncached(city: string, startDate?: string): Promise<WeatherDataResponse> {
   const cleanCity = city.trim();
-  const apiKey = (process.env.WEATHER_API_KEY || process.env.NEXT_PUBLIC_WEATHER_API_KEY || '').trim();
+  const apiKey = (process.env.WEATHER_API_KEY || '').trim();
 
   // 1. Try WeatherAPI.com if key is available
   if (apiKey) {

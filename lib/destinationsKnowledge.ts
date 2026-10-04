@@ -1017,6 +1017,51 @@ export const POPULAR_DESTINATIONS_DATA: Record<string, DayAttractionPlan[]> = {
         loc: 'Civil Lines, Nagpur'
       }
     }
+  ],
+  // SHIRDI
+  shirdi: [
+    {
+      day: 1,
+      morning: {
+        title: 'Shri Sai Baba Samadhi Mandir & Kakad Aarti Darshan',
+        desc: 'Experience early morning sacred Kakad Aarti and holy Samadhi Darshan of Sai Baba.',
+        category: 'Sightseeing',
+        loc: 'Shirdi Temple Complex'
+      },
+      afternoon: {
+        title: 'Dwarkamai & Chavadi Sacred Heritage Walk',
+        desc: 'Visit the sacred mosque where Baba resided and the Chavadi procession pavilion.',
+        category: 'Sightseeing',
+        loc: 'Shirdi Central Compound'
+      },
+      evening: {
+        title: 'Sai Teerth Spiritual Theme Park & 5D Show',
+        desc: 'Experience India\'s first devotional theme park featuring 5D Teerth Yatra and fountain light show.',
+        category: 'Activity',
+        loc: 'Pimpalwadi Road, Shirdi'
+      }
+    },
+    {
+      day: 2,
+      morning: {
+        title: 'Khandoba Mandir & Gurusthan Sacred Neem Tree',
+        desc: 'Pay homage where Mahalsapati welcomed Baba, and visit the sacred wish-fulfilling Neem tree.',
+        category: 'Sightseeing',
+        loc: 'Ahmednagar-Manmad Road, Shirdi'
+      },
+      afternoon: {
+        title: 'Shani Shingnapur Holy Shrine Countryside Excursion',
+        desc: 'Short scenic countryside trip to the unique lockless village and open-air Shani Dev temple.',
+        category: 'Activity',
+        loc: 'Nevasa Taluka, 70km from Shirdi'
+      },
+      evening: {
+        title: 'Sai Prasadalaya Mahaprasad & Traditional Mawa Peda Tasting',
+        desc: 'Savor blessed satvik Mahaprasad at Asia\'s largest solar kitchen followed by local sweets shopping.',
+        category: 'Dining',
+        loc: 'Sai Prasadalaya Complex, Shirdi'
+      }
+    }
   ]
 };
 

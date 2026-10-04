@@ -70,3 +70,11 @@ backend/__pycache__/
 # Archives
 *.zip
 *.tar.gz
+
+# Local execution tracking & scratch
+steps/
+plan.txt
+DETAILED_EXECUTION_STEPS.md
+IMPLEMENTATION_PLAN.md
+MASTER_CONTEXT.md
+XPLORA_OVERVIEW.txt

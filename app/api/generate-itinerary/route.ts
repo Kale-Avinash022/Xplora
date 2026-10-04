@@ -17,6 +17,7 @@ import { getOrSet, setCacheRecord, peekCacheRecord, normalizeKey } from '@/lib/c
 import { CACHE_TTLS } from '@/lib/cache/ttls';
 import { RequestBudget } from '@/lib/perf/budget';
 import { generatePlaceSummaries } from '@/lib/llm/client';
+import { estimateTripCost, TripCostEstimate } from '@/lib/costEstimator';
 
 export interface GeneratedActivity {
   id: string;
@@ -85,6 +86,13 @@ export interface GeneratedItineraryResponse {
     }>;
   };
   dayPlans: GeneratedDayPlan[];
+  costEstimate?: TripCostEstimate;
+  budgetWarning?: {
+    isUnderBudget: boolean;
+    minimumRequired: number;
+    recommended: number;
+    deficit: number;
+  } | null;
 }
 
 export async function POST(req: Request) {
@@ -401,6 +409,24 @@ export async function POST(req: Request) {
       }),
     }));
 
+    const tripCostEstimate = estimateTripCost({
+      destination: cleanDest,
+      from: body.from,
+      durationDays: parsedDays,
+      travelers: Number(body.travelers) || 2,
+      travelStyle,
+    });
+
+    const budgetWarning =
+      parsedBudget < tripCostEstimate.minimumRequired
+        ? {
+            isUnderBudget: true,
+            minimumRequired: tripCostEstimate.minimumRequired,
+            recommended: tripCostEstimate.recommended,
+            deficit: tripCostEstimate.minimumRequired - parsedBudget,
+          }
+        : null;
+
     const responsePayload: GeneratedItineraryResponse = {
       title: `${parsedDays}-Day ${travelStyle} Trip to ${cleanDest}`,
       destination: cleanDest,
@@ -427,6 +453,8 @@ export async function POST(req: Request) {
         forecast: liveWeatherData.forecast,
       },
       dayPlans: finalDayPlans,
+      costEstimate: tripCostEstimate,
+      budgetWarning,
     };
 
     // Save finished itinerary in cache (6 hours)

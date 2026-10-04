@@ -188,13 +188,17 @@ function HeroHeading() {
 import { WeatherCard } from '@/components/WeatherCard'
 import { MyTripsModal } from '@/components/MyTripsModal'
 import { FlightHotelResults } from '@/components/FlightHotelResults'
+import { TrackTicketModal } from '@/components/TrackTicketModal'
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { FlightOption } from '@/app/api/flights/route'
 import { HotelOption } from '@/app/api/hotels/route'
+import { BookingArea, TransportMode, CabinClass, TravelSearchEnvelope, StayOption, TripProposal, TrainOption, BusOption, TrackedTicket } from '@/lib/types'
+import { validateFlightQuery, validateStayQuery, validateTrainQuery, validateBusQuery, getTodayIsoDate } from '@/lib/travel/validation'
 import { exportItineraryToPDF, exportToGoogleCalendar, exportToICS } from '@/lib/exportUtils'
 import { SUPPORTED_CURRENCIES, convertAmount } from '@/lib/currencyUtils'
 import { ExpenseTracker } from '@/components/ExpenseTracker'
+import { estimateTripCost } from '@/lib/costEstimator'
 import { WeatherSwapBanner } from '@/components/WeatherSwapBanner'
 import { SiteHeader } from '@/components/SiteHeader'
 import { HeartButton } from '@/components/HeartButton'
@@ -295,12 +299,94 @@ export default function Home() {
   const [showFromDropdown, setShowFromDropdown] = useState(false)
   const [showToDropdown, setShowToDropdown] = useState(false)
   const [showHomeCityDropdown, setShowHomeCityDropdown] = useState(false)
+  // Phase 4: Booking Area & Transport Modes (Steps 32, 33, 34)
+  const [bookingArea, setBookingArea] = useState<BookingArea>('TRAVEL')
+  const [transportMode, setTransportMode] = useState<TransportMode>('FLIGHTS')
+
+  // Step 35: Isolated React State for Flights
+  const [flightOrigin, setFlightOrigin] = useState('')
+  const [flightDestination, setFlightDestination] = useState('')
+  const [flightOutboundDate, setFlightOutboundDate] = useState(() => getTodayIsoDate())
+  const [flightReturnDate, setFlightReturnDate] = useState('')
+  const [flightTravelers, setFlightTravelers] = useState(1)
+  const [flightCabinClass, setFlightCabinClass] = useState<CabinClass>('Economy')
+  const [flightEnvelope, setFlightEnvelope] = useState<TravelSearchEnvelope<FlightOption> | null>(null)
+  const [flightIsLoading, setFlightIsLoading] = useState(false)
+  const [flightErrors, setFlightErrors] = useState<Record<string, string>>({})
+  const flightRequestId = useRef(0)
+  const flightAbortRef = useRef<AbortController | null>(null)
+  const [showFlightOriginDropdown, setShowFlightOriginDropdown] = useState(false)
+  const [showFlightDestDropdown, setShowFlightDestDropdown] = useState(false)
+
+  // Step 36: Isolated React State for Stays
+  const [stayDestination, setStayDestination] = useState('')
+  const [stayCheckIn, setStayCheckIn] = useState(() => getTodayIsoDate())
+  const [stayCheckOut, setStayCheckOut] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  })
+  const [stayGuests, setStayGuests] = useState(2)
+  const [stayRooms, setStayRooms] = useState(1)
+  const [stayEnvelope, setStayEnvelope] = useState<TravelSearchEnvelope<StayOption> | null>(null)
+  const [stayIsLoading, setStayIsLoading] = useState(false)
+  const [stayErrors, setStayErrors] = useState<Record<string, string>>({})
+  const stayRequestId = useRef(0)
+  const stayAbortRef = useRef<AbortController | null>(null)
+  const [showStayDestDropdown, setShowStayDestDropdown] = useState(false)
+
+  // Step 38: Isolated React State for Trains
+  const [trainOrigin, setTrainOrigin] = useState('')
+  const [trainDestination, setTrainDestination] = useState('')
+  const [trainDate, setTrainDate] = useState(() => getTodayIsoDate())
+  const [trainTravelers, setTrainTravelers] = useState(1)
+  const [trainClass, setTrainClass] = useState('ALL')
+  const [trainQuota, setTrainQuota] = useState('GN')
+  const [trainEnvelope, setTrainEnvelope] = useState<TravelSearchEnvelope<TrainOption> | null>(null)
+  const [trainIsLoading, setTrainIsLoading] = useState(false)
+  const [trainErrors, setTrainErrors] = useState<Record<string, string>>({})
+  const trainRequestId = useRef(0)
+  const trainAbortRef = useRef<AbortController | null>(null)
+  const [showTrainOriginDropdown, setShowTrainOriginDropdown] = useState(false)
+  const [showTrainDestDropdown, setShowTrainDestDropdown] = useState(false)
+
+  // Isolated React State for Buses (Triangle Distance + ₹13/km + redBus redirect)
+  const [busOrigin, setBusOrigin] = useState('')
+  const [busDestination, setBusDestination] = useState('')
+  const [busDate, setBusDate] = useState(() => getTodayIsoDate())
+  const [busTravelers, setBusTravelers] = useState(1)
+  const [busCategory, setBusCategory] = useState<'ALL' | 'TRAVELS' | 'LOCAL'>('ALL')
+  const [busEnvelope, setBusEnvelope] = useState<TravelSearchEnvelope<BusOption> | null>(null)
+  const [busIsLoading, setBusIsLoading] = useState(false)
+  const [busErrors, setBusErrors] = useState<Record<string, string>>({})
+  const busRequestId = useRef(0)
+  const busAbortRef = useRef<AbortController | null>(null)
+  const [showBusOriginDropdown, setShowBusOriginDropdown] = useState(false)
+  const [showBusDestDropdown, setShowBusDestDropdown] = useState(false)
+  const [busOriginSuggestions, setBusOriginSuggestions] = useState<any[]>([])
+  const [busDestSuggestions, setBusDestSuggestions] = useState<any[]>([])
+  const busOriginRef = useRef<HTMLDivElement>(null)
+  const busDestRef = useRef<HTMLDivElement>(null)
+
+  // Close bus dropdowns on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (busOriginRef.current && !busOriginRef.current.contains(e.target as Node)) {
+        setShowBusOriginDropdown(false)
+      }
+      if (busDestRef.current && !busDestRef.current.contains(e.target as Node)) {
+        setShowBusDestDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [])
 
   // Auth User Session State
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string; image?: string | null } | null>(null)
 
   // AI Itinerary Generator State
-  const [aiDestination, setAiDestination] = useState('Goa')
+  const [aiDestination, setAiDestination] = useState('')
   const [aiDuration, setAiDuration] = useState(3)
   const [aiBudget, setAiBudget] = useState(25000)
   const [aiTravelStyle, setAiTravelStyle] = useState('Adventure')
@@ -329,6 +415,82 @@ export default function Home() {
     duration?: string
     budget?: string
   }>({})
+  const [chatProposalNotice, setChatProposalNotice] = useState<string | null>(null)
+  const [highlightPlanner, setHighlightPlanner] = useState(false)
+
+  // Track Ticket State (Phase 7 Ticket Tracking)
+  const [showTrackTicketModal, setShowTrackTicketModal] = useState(false)
+  const [trackedTickets, setTrackedTickets] = useState<TrackedTicket[]>([])
+  const [ticketToast, setTicketToast] = useState<{ message: string; type: string } | null>(null)
+
+  // Load tracked tickets from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('xplora_tracked_tickets')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed)) {
+            setTrackedTickets(parsed)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse tracked tickets from storage:', err)
+      }
+    }
+  }, [])
+
+  // Handlers for Tracked Tickets
+  const handleTrackTicket = useCallback((ticket: TrackedTicket) => {
+    setTrackedTickets((prev) => {
+      const filtered = prev.filter((t) => t.id !== ticket.id && t.pnrOrBookingRef !== ticket.pnrOrBookingRef)
+      const updated = [ticket, ...filtered]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_tickets', JSON.stringify(updated))
+      }
+      return updated
+    })
+
+    const typeLabel = ticket.type === 'TRAIN' ? '🚆 Train Ticket' : ticket.type === 'FLIGHT' ? '✈️ Flight Ticket' : '🚌 Bus Ticket'
+    setTicketToast({
+      message: `${typeLabel} added to Track Ticket! (${ticket.title})`,
+      type: ticket.type,
+    })
+
+    setTimeout(() => {
+      setTicketToast((current) => (current?.message.includes(ticket.title) ? null : current))
+    }, 6000)
+  }, [])
+
+  const handleRemoveTicket = useCallback((id: string) => {
+    setTrackedTickets((prev) => {
+      const updated = prev.filter((t) => t.id !== id)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_tickets', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
+
+  const handleUpdatePnr = useCallback((id: string, newPnr: string) => {
+    setTrackedTickets((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, pnrOrBookingRef: newPnr } : t))
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_tickets', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
+
+  const handleAddManualTicket = useCallback((ticket: TrackedTicket) => {
+    setTrackedTickets((prev) => {
+      const updated = [ticket, ...prev]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_tickets', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
 
   useEffect(() => {
     // 1. Immediate local session load
@@ -442,7 +604,7 @@ export default function Home() {
       if (!isValid) return
     }
 
-    const targetDest = (overrideDest || aiDestination || 'Goa').trim()
+    const targetDest = (overrideDest || aiDestination).trim()
     const targetBudget = overrideBudget || Number(aiBudget) || 25000
     const requestedDays = Math.min(Math.max(Math.round(Number(aiDuration)) || 3, 1), 30)
     setIsGenerating(true)
@@ -477,51 +639,48 @@ export default function Home() {
     }
   }
 
+  // Step 51: Preserve User Selections on Destination Selection
   const handleSelectPopularDestination = (destName: string) => {
     setAiDestination(destName)
+    if (formErrors.destination) {
+      setFormErrors((prev) => ({ ...prev, destination: undefined }))
+    }
     const formElem = document.getElementById('ai-trip-planner')
     if (formElem) {
       formElem.scrollIntoView({ behavior: 'smooth' })
     }
-    handleGeneratePlan(destName)
+    // Preserves existing user choices for budget, travel style, duration, and dates
   }
 
-  const handleCreateTripFromChat = (params: {
-    destination: string;
-    from: string;
-    durationDays: number;
-    budget?: number;
-    travelStyle: string;
-    startDate: string;
-  }) => {
-    setAiDestination(params.destination)
-    setFrom(params.from)
-    setTo(params.destination)
-    setAiDuration(params.durationDays)
-    if (params.budget) setAiBudget(params.budget)
-    setAiTravelStyle(params.travelStyle)
-    if (params.startDate) setAiTravelDate(params.startDate)
+  // Step 53: Implement Apply Trip Details Callback & Form Scroll
+  const handleApplyTripProposal = (proposal: TripProposal) => {
+    if (proposal.destination) {
+      setAiDestination(proposal.destination)
+      setTo(proposal.destination)
+    }
+    if (proposal.from) setFrom(proposal.from)
+    if (proposal.durationDays) setAiDuration(proposal.durationDays)
+    if (proposal.budget) setAiBudget(proposal.budget)
+    if (proposal.travelStyle) setAiTravelStyle(proposal.travelStyle)
+    if (proposal.startDate) setAiTravelDate(proposal.startDate)
+
+    // Clear previous form validation errors
+    setFormErrors({})
+
+    // Step 53: Display confirmation notification and highlight updated fields
+    setChatProposalNotice('Trip details applied to planner. Review and click Generate to create itinerary.')
+    setHighlightPlanner(true)
+    setTimeout(() => setHighlightPlanner(false), 3000)
 
     const formElem = document.getElementById('ai-trip-planner')
     if (formElem) {
       formElem.scrollIntoView({ behavior: 'smooth' })
     }
+  }
 
-    // 1. Generate AI Itinerary using updated destination AND updated budget!
-    handleGeneratePlan(params.destination, params.budget)
-
-    // 2. Fetch Flights & Hotels for the route
-    setIsSearchLoading(true)
-    fetch(`/api/flights?from=${encodeURIComponent(params.from)}&to=${encodeURIComponent(params.destination)}&date=${params.startDate || '2026-09-01'}`)
-      .then((r) => r.json())
-      .then((data) => setFlightsResults(data.flights || []))
-      .catch((e) => console.error('Flight search error:', e))
-
-    fetch(`/api/hotels?destination=${encodeURIComponent(params.destination)}&checkIn=${params.startDate || '2026-09-01'}`)
-      .then((r) => r.json())
-      .then((data) => setHotelsResults(data.hotels || []))
-      .catch((e) => console.error('Hotel search error:', e))
-      .finally(() => setIsSearchLoading(false))
+  // Step 52: Eliminate Autonomous Chat Generation & Searches
+  const handleCreateTripFromChat = (params: TripProposal) => {
+    handleApplyTripProposal(params)
   }
 
   const handleConfirmModalSubmit = (confirmed: any) => {
@@ -532,15 +691,8 @@ export default function Home() {
     setAiBudget(confirmed.budget)
     setAiTravelStyle(confirmed.interests?.[0] || 'Adventure')
 
-    // Trigger Itinerary & Flights/Hotels Search for confirmed parameters
-    handleCreateTripFromChat({
-      destination: confirmed.destination,
-      from: from || 'Pune',
-      durationDays: confirmed.durationDays,
-      budget: confirmed.budget,
-      travelStyle: confirmed.interests?.[0] || 'Adventure',
-      startDate: confirmed.startDate,
-    })
+    // Trigger verified plan generation for confirmed parameters
+    handleGeneratePlan(confirmed.destination, confirmed.budget)
   }
 
   const handleExecuteActionCommand = (command: 'EXPORT_PDF' | 'SAVE_TRIP' | 'EXPORT_CALENDAR') => {
@@ -553,22 +705,325 @@ export default function Home() {
     }
   }
 
-  const handleSearchServices = async () => {
-    setIsSearchLoading(true)
+  // Step 37 & 41: Dedicated Flight Search with Local Validation and AbortController Protection
+  const handleSearchFlights = async () => {
+    if (flightAbortRef.current) {
+      flightAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    flightAbortRef.current = controller
+
+    flightRequestId.current += 1
+    const currentReqId = flightRequestId.current
+
+    const origin = flightOrigin.trim()
+    const destination = flightDestination.trim()
+    const outboundDate = flightOutboundDate.trim() || departure.trim() || getTodayIsoDate()
+    const returnD = flightReturnDate.trim() || undefined
+    const travelers = flightTravelers || Number(travellers) || 1
+    const cabin = flightCabinClass || 'Economy'
+
+    const validation = validateFlightQuery({
+      origin,
+      destination,
+      outboundDate,
+      returnDate: returnD,
+      travelers,
+      cabinClass: cabin,
+      currency: selectedCurrency,
+    })
+
+    if (!validation.isValid) {
+      setFlightErrors(validation.errors)
+      return
+    }
+
+    setFlightErrors({})
+    setFlightIsLoading(true)
+
     try {
-      if (activeTab === 'FLIGHTS') {
-        const res = await fetch(`/api/flights?from=${encodeURIComponent(from || 'Delhi')}&to=${encodeURIComponent(to || 'Goa')}&date=${departure || '2026-09-01'}`)
-        const data = await res.json()
-        setFlightsResults(data.flights || [])
-      } else if (activeTab === 'HOTELS') {
-        const res = await fetch(`/api/hotels?destination=${encodeURIComponent(from || 'Goa')}&checkIn=${departure || '2026-09-01'}`)
-        const data = await res.json()
-        setHotelsResults(data.hotels || [])
+      const params = new URLSearchParams({
+        origin,
+        destination,
+        outboundDate,
+        travelers: String(travelers),
+        cabinClass: cabin,
+        currency: selectedCurrency,
+      })
+      if (returnD) params.set('returnDate', returnD)
+
+      const res = await fetch(`/api/flights?${params.toString()}`, {
+        signal: controller.signal,
+      })
+      const data: TravelSearchEnvelope<FlightOption> = await res.json()
+
+      if (flightRequestId.current === currentReqId) {
+        setFlightEnvelope(data)
+        setFlightsResults(data.results || (data as any).flights || [])
       }
-    } catch (err) {
-      console.error('Service search error:', err)
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Flight search error:', err)
+        if (flightRequestId.current === currentReqId) {
+          setFlightEnvelope({
+            query: { origin, destination, outboundDate, travelers, cabinClass: cabin, currency: selectedCurrency },
+            status: 'UNAVAILABLE',
+            results: [],
+            count: 0,
+            notice: 'Unable to reach flight search service. Please check your connection and try again.',
+          })
+        }
+      }
     } finally {
-      setIsSearchLoading(false)
+      if (flightRequestId.current === currentReqId) {
+        setFlightIsLoading(false)
+      }
+    }
+  }
+
+  // Step 40 & 41: Dedicated Stay Search with Local Validation and AbortController Protection
+  const handleSearchStays = async () => {
+    if (stayAbortRef.current) {
+      stayAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    stayAbortRef.current = controller
+
+    stayRequestId.current += 1
+    const currentReqId = stayRequestId.current
+
+    const destination = stayDestination.trim()
+    const checkIn = stayCheckIn.trim() || departure.trim() || getTodayIsoDate()
+    let checkOut = stayCheckOut.trim() || returnDate.trim()
+    if (!checkOut) {
+      const d = new Date(checkIn)
+      d.setDate(d.getDate() + 1)
+      checkOut = d.toISOString().split('T')[0]
+    }
+    const guests = stayGuests || Number(travellers) || 2
+    const rooms = stayRooms || 1
+
+    const validation = validateStayQuery({
+      destination,
+      checkIn,
+      checkOut,
+      guests,
+      rooms,
+      currency: selectedCurrency,
+    })
+
+    if (!validation.isValid) {
+      setStayErrors(validation.errors)
+      return
+    }
+
+    setStayErrors({})
+    setStayIsLoading(true)
+
+    try {
+      const params = new URLSearchParams({
+        destination,
+        checkIn,
+        checkOut,
+        guests: String(guests),
+        rooms: String(rooms),
+        currency: selectedCurrency,
+      })
+
+      const res = await fetch(`/api/hotels?${params.toString()}`, {
+        signal: controller.signal,
+      })
+      const data: TravelSearchEnvelope<StayOption> = await res.json()
+
+      if (stayRequestId.current === currentReqId) {
+        setStayEnvelope(data)
+        setHotelsResults((data.results as any) || (data as any).hotels || [])
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Stay search error:', err)
+        if (stayRequestId.current === currentReqId) {
+          setStayEnvelope({
+            query: { destination, checkIn, checkOut, guests, rooms, currency: selectedCurrency },
+            status: 'UNAVAILABLE',
+            results: [],
+            count: 0,
+            notice: 'Unable to reach accommodations service. Please check your connection and try again.',
+          })
+        }
+      }
+    } finally {
+      if (stayRequestId.current === currentReqId) {
+        setStayIsLoading(false)
+      }
+    }
+  }
+
+  // Step 38 & 41: Dedicated Train Search with Local Validation and AbortController Protection
+  const handleSearchTrains = async () => {
+    if (trainAbortRef.current) {
+      trainAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    trainAbortRef.current = controller
+
+    trainRequestId.current += 1
+    const currentReqId = trainRequestId.current
+
+    const origin = trainOrigin.trim()
+    const destination = trainDestination.trim()
+    const date = trainDate.trim() || departure.trim() || getTodayIsoDate()
+    const quota = trainQuota || 'GN'
+    const travelers = trainTravelers || 1
+    const trainClassVal = trainClass === 'ALL' ? undefined : trainClass
+
+    const validation = validateTrainQuery({
+      origin,
+      destination,
+      date,
+      quota,
+      travelers,
+      trainClass: trainClassVal,
+    })
+
+    if (!validation.isValid) {
+      setTrainErrors(validation.errors)
+      return
+    }
+
+    setTrainErrors({})
+    setTrainIsLoading(true)
+
+    try {
+      const params = new URLSearchParams({
+        origin,
+        destination,
+        date,
+        quota,
+        travelers: String(travelers),
+      })
+      if (trainClassVal) params.set('trainClass', trainClassVal)
+
+      const res = await fetch(`/api/trains?${params.toString()}`, {
+        signal: controller.signal,
+      })
+      const data: TravelSearchEnvelope<TrainOption> = await res.json()
+
+      if (trainRequestId.current === currentReqId) {
+        setTrainEnvelope(data)
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Train search error:', err)
+        if (trainRequestId.current === currentReqId) {
+          setTrainEnvelope({
+            query: { origin, destination, date, quota, travelers, trainClass: trainClassVal },
+            status: 'UNAVAILABLE',
+            results: [],
+            count: 0,
+            notice: 'Live railway service is temporarily experiencing connectivity issues. Please try again shortly.',
+          })
+        }
+      }
+    } finally {
+      if (trainRequestId.current === currentReqId) {
+        setTrainIsLoading(false)
+      }
+    }
+  }
+
+  const fetchBusSuggestions = async (query: string, field: 'origin' | 'dest') => {
+    try {
+      const res = await fetch(`/api/buses/cities?q=${encodeURIComponent(query)}&limit=8`)
+      if (res.ok) {
+        const data = await res.json()
+        if (field === 'origin') {
+          setBusOriginSuggestions(data.cities || [])
+        } else {
+          setBusDestSuggestions(data.cities || [])
+        }
+      }
+    } catch {
+      // Fallback cleanly
+    }
+  }
+
+  const handleSearchBuses = async () => {
+    if (busAbortRef.current) {
+      busAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    busAbortRef.current = controller
+    const currentReqId = ++busRequestId.current
+
+    const origin = busOrigin.trim()
+    const destination = busDestination.trim()
+    const date = busDate.trim() || getTodayIsoDate()
+    const travelers = busTravelers || 1
+    const category = busCategory || 'ALL'
+
+    const validation = validateBusQuery({
+      origin,
+      destination,
+      date,
+      category,
+      travelers,
+    })
+
+    if (!validation.isValid) {
+      setBusErrors(validation.errors)
+      return
+    }
+
+    setBusErrors({})
+    setBusIsLoading(true)
+
+    try {
+      const params = new URLSearchParams({
+        origin,
+        destination,
+        date,
+        category,
+        travelers: String(travelers),
+      })
+
+      const res = await fetch(`/api/buses?${params.toString()}`, {
+        signal: controller.signal,
+      })
+      const data: TravelSearchEnvelope<BusOption> = await res.json()
+
+      if (busRequestId.current === currentReqId) {
+        setBusEnvelope(data)
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Bus search error:', err)
+        if (busRequestId.current === currentReqId) {
+          setBusEnvelope({
+            query: { origin, destination, date, category, travelers },
+            status: 'UNAVAILABLE',
+            results: [],
+            count: 0,
+            notice: 'Bus route calculation is temporarily experiencing issues. Please try again shortly.',
+          })
+        }
+      }
+    } finally {
+      if (busRequestId.current === currentReqId) {
+        setBusIsLoading(false)
+      }
+    }
+  }
+
+  const handleSearchServices = async () => {
+    if (bookingArea === 'STAY') {
+      await handleSearchStays()
+    } else if (transportMode === 'TRAINS') {
+      await handleSearchTrains()
+    } else if (transportMode === 'BUSES') {
+      await handleSearchBuses()
+    } else {
+      await handleSearchFlights()
     }
   }
 
@@ -644,6 +1099,29 @@ export default function Home() {
     'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
     'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik',
     'Goa', 'Kochi', 'Varanasi', 'Amritsar', 'Udaipur', 'Mysore'
+  ]
+
+  const trainStations = [
+    { code: 'NDLS', name: 'New Delhi (NDLS)' },
+    { code: 'CSMT', name: 'Mumbai CSMT (CSMT)' },
+    { code: 'MMCT', name: 'Mumbai Central (MMCT)' },
+    { code: 'PUNE', name: 'Pune Junction (PUNE)' },
+    { code: 'NGP', name: 'Nagpur Junction (NGP)' },
+    { code: 'SBC', name: 'KSR Bengaluru (SBC)' },
+    { code: 'MAS', name: 'Chennai Central (MAS)' },
+    { code: 'HWH', name: 'Howrah Junction (HWH)' },
+    { code: 'ADI', name: 'Ahmedabad Junction (ADI)' },
+    { code: 'JP', name: 'Jaipur Junction (JP)' },
+    { code: 'SC', name: 'Secunderabad (SC)' },
+    { code: 'MAO', name: 'Goa Madgaon (MAO)' },
+    { code: 'LKO', name: 'Lucknow Charbagh (LKO)' },
+    { code: 'BSB', name: 'Varanasi Junction (BSB)' },
+    { code: 'ERS', name: 'Kochi Ernakulam (ERS)' },
+    { code: 'CDG', name: 'Chandigarh (CDG)' },
+    { code: 'BPL', name: 'Bhopal Junction (BPL)' },
+    { code: 'PNBE', name: 'Patna Junction (PNBE)' },
+    { code: 'ASR', name: 'Amritsar (ASR)' },
+    { code: 'GHY', name: 'Guwahati (GHY)' },
   ]
 
   const tabs = [
@@ -745,9 +1223,30 @@ export default function Home() {
         <section className="relative overflow-hidden py-16 px-4">
           <div id="ai-trip-planner" className="max-w-4xl mx-auto">
             {/* Card Container */}
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border p-8 md:p-10" style={{ borderColor: '#E1DDD1' }}>
+            <div 
+              className={`bg-white rounded-2xl shadow-2xl overflow-hidden border p-8 md:p-10 transition-all duration-500 ${
+                highlightPlanner ? 'ring-4 ring-[#526B57] shadow-[0_0_35px_rgba(82,107,87,0.35)] scale-[1.01]' : ''
+              }`} 
+              style={{ borderColor: '#E1DDD1' }}
+            >
               {/* Task B: Interactive Hero Heading */}
               <HeroHeading />
+
+              {/* Step 53: Confirmation Notification after Applying Proposal from Chat */}
+              {chatProposalNotice && (
+                <div className="mb-6 p-4 rounded-xl bg-emerald-50 border-2 border-emerald-400 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">📋</span>
+                    <span>{chatProposalNotice}</span>
+                  </div>
+                  <button
+                    onClick={() => setChatProposalNotice(null)}
+                    className="text-emerald-700 hover:text-emerald-900 font-bold ml-2 px-1.5 py-0.5 rounded hover:bg-emerald-100 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* Screen 2: Confirm Parsed Details In-Page Section */}
               {showConfirmModal && parsedDetailsData && (
@@ -838,19 +1337,34 @@ export default function Home() {
                 {/* Destination Input */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Destination</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Paris, Goa, Tokyo"
-                    value={aiDestination}
-                    onChange={(e) => {
-                      setAiDestination(e.target.value)
-                      if (formErrors.destination) setFormErrors((prev) => ({ ...prev, destination: undefined }))
-                    }}
-                    className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none bg-white font-medium ${
-                      formErrors.destination ? 'border-red-500 focus:border-red-500' : ''
-                    }`}
-                    style={{ borderColor: formErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Enter destination city"
+                      value={aiDestination}
+                      onChange={(e) => {
+                        setAiDestination(e.target.value)
+                        if (formErrors.destination) setFormErrors((prev) => ({ ...prev, destination: undefined }))
+                      }}
+                      className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none bg-white font-medium ${
+                        formErrors.destination ? 'border-red-500 focus:border-red-500' : ''
+                      }`}
+                      style={{ borderColor: formErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {aiDestination ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiDestination('')
+                          if (formErrors.destination) setFormErrors((prev) => ({ ...prev, destination: undefined }))
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                        title="Clear destination"
+                      >
+                        ✕
+                      </button>
+                    ) : null}
+                  </div>
                   {formErrors.destination && (
                     <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.destination}</p>
                   )}
@@ -924,6 +1438,29 @@ export default function Home() {
                   {formErrors.budget && (
                     <p className="text-xs text-red-600 mt-1 font-semibold">{formErrors.budget}</p>
                   )}
+                  {(() => {
+                    if (!aiDestination || !aiBudget) return null;
+                    try {
+                      const est = estimateTripCost({
+                        destination: aiDestination,
+                        from: from || homeCity,
+                        durationDays: Number(aiDuration) || 2,
+                        travelers: Number(travellers) || 2,
+                        travelStyle: aiTravelStyle,
+                      });
+                      if (Number(aiBudget) < est.minimumRequired) {
+                        return (
+                          <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-300 text-[11px] text-amber-900 font-medium">
+                            <span className="font-bold">⚠️ Budget Advisory: </span>
+                            ₹{Number(aiBudget).toLocaleString('en-IN')} is below the realistic minimum of ₹{est.minimumRequired.toLocaleString('en-IN')} for {Number(aiDuration) || 2}d ({Number(travellers) || 2} traveler{Number(travellers) > 1 ? 's' : ''}). Rec: ₹{est.recommended.toLocaleString('en-IN')}.
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return null;
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
@@ -1135,7 +1672,13 @@ export default function Home() {
             {generatedPlan.totalBudget && (
               <ExpenseTracker 
                 plannedBudget={generatedPlan.totalBudget} 
-                currencyCode={selectedCurrency} 
+                currencyCode={selectedCurrency}
+                destination={generatedPlan.destination}
+                dayPlans={generatedPlan.dayPlans}
+                from={from || homeCity}
+                travelers={Number(travellers) || 2}
+                travelStyle={generatedPlan.travelStyle || aiTravelStyle}
+                durationDays={generatedPlan.durationDays || aiDuration}
               />
             )}
 
@@ -1243,233 +1786,1102 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Booking Tabs */}
+        {/* Step 32: Top-Level Booking Area Split (Travel vs Stay) */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden" style={{ border: '1px solid #E1DDD1' }}>
-          {/* Tab Headers */}
-          <div className="flex overflow-x-auto no-scrollbar" style={{ borderBottom: '2px solid #E1DDD1' }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-[110px] sm:min-w-[130px] flex items-center justify-center gap-2 py-3.5 sm:py-4 px-3 text-sm sm:text-base font-semibold transition whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'text-white border-b-4'
-                    : 'hover:bg-[#F4F1E6]'
-                }`}
-                style={activeTab === tab.id ? { 
-                  backgroundColor: '#526B57',
-                  borderColor: '#C6A96B',
-                  color: '#FFFFFF'
-                } : { 
-                  color: '#292A25'
-                }}
-              >
-                <span className="text-xl sm:text-2xl">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Booking Form */}
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className={`grid grid-cols-1 sm:grid-cols-2 ${showToField ? 'lg:grid-cols-3 xl:grid-cols-[1.2fr,auto,1.2fr,1fr,1fr,1.2fr]' : 'lg:grid-cols-4'} gap-4 items-end`}>
-              {/* From */}
-              <div className="relative">
-                <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.from}</label>
-                <input
-                  type="text"
-                  placeholder={`Enter ${labels.from.toLowerCase()}`}
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value)
-                    setShowFromDropdown(true)
-                  }}
-                  onFocus={() => setShowFromDropdown(true)}
-                  className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
-                  style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                  onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                />
-                {showFromDropdown && filteredCitiesFrom.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
-                    {filteredCitiesFrom.map((city) => (
-                      <div
-                        key={city}
-                        onClick={() => handleCitySelect(city, 'from')}
-                        className="px-4 py-2 cursor-pointer"
-                        style={{ color: '#292A25' }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F4F1E6'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {city}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Swap Button - Centered between From and To */}
-              {showToField && (
-                <div className="flex justify-center items-center sm:col-span-2 lg:col-span-3 xl:col-span-1 py-1 xl:py-0">
-                  <button
-                    type="button"
-                    onClick={swapCities}
-                    className="p-3 text-white rounded-xl transition shadow-md hover:scale-105"
-                    style={{ backgroundColor: '#C6A96B' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#C6A96B'}
-                    title="Swap cities"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-
-              {/* To */}
-              {showToField && (
-                <div className="relative">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.to}</label>
-                  <input
-                    type="text"
-                    placeholder={`Enter ${labels.to.toLowerCase()}`}
-                    value={to}
-                    onChange={(e) => {
-                      setTo(e.target.value)
-                      setShowToDropdown(true)
-                    }}
-                    onFocus={() => setShowToDropdown(true)}
-                    className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
-                    style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                    onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                    onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                  />
-                  {showToDropdown && filteredCitiesTo.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
-                      {filteredCitiesTo.map((city) => (
-                        <div
-                          key={city}
-                          onClick={() => handleCitySelect(city, 'to')}
-                          className="px-4 py-2 cursor-pointer"
-                          style={{ color: '#292A25' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F4F1E6'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          {city}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Departure */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.departure}</label>
-                <input
-                  type="date"
-                  value={departure}
-                  onChange={(e) => setDeparture(e.target.value)}
-                  className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
-                  style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                  onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                />
-              </div>
-
-              {/* Return */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.return}</label>
-                <input
-                  type="date"
-                  value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
-                  style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                  onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                />
-              </div>
-
-              {/* Travelers & Class */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>{labels.travelers}</label>
-                <select
-                  value={travellers}
-                  onChange={(e) => setTravellers(e.target.value)}
-                  className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold mb-2"
-                  style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                  onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                    <option key={num} value={num}>{num} {num === 1 ? 'Traveler' : 'Travelers'}</option>
-                  ))}
-                </select>
-                <select
-                  value={classType}
-                  onChange={(e) => setClassType(e.target.value)}
-                  className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none"
-                  style={{ borderColor: '#E1DDD1', color: '#292A25' }}
-                  onFocusCapture={(e) => e.target.style.borderColor = '#526B57'}
-                  onBlurCapture={(e) => e.target.style.borderColor = '#E1DDD1'}
-                >
-                  {activeTab === 'HOTELS' ? (
-                    <>
-                      <option>1 Room</option>
-                      <option>2 Rooms</option>
-                      <option>3 Rooms</option>
-                    </>
-                  ) : activeTab === 'BUSES' ? (
-                    <>
-                      <option>Seater</option>
-                      <option>Sleeper</option>
-                      <option>AC</option>
-                    </>
-                  ) : (
-                    <>
-                      <option>Economy</option>
-                      <option>Premium Economy</option>
-                      <option>Business</option>
-                      <option>First Class</option>
-                    </>
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleSearchServices}
-              className="w-full mt-6 py-4 text-white font-bold rounded-lg transition shadow-lg text-lg hover:shadow-xl transform hover:scale-[1.02]"
-              style={{ backgroundColor: '#526B57' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#263D32'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#526B57'}
+          {/* Primary Booking Area Header */}
+          <div className="flex border-b-2" style={{ borderColor: '#E1DDD1' }}>
+            <button
+              onClick={() => {
+                setBookingArea('TRAVEL')
+                setActiveTab(transportMode)
+              }}
+              className={`flex-1 py-4 px-4 text-center font-bold text-sm sm:text-base transition flex items-center justify-center gap-2 border-b-4 ${
+                bookingArea === 'TRAVEL'
+                  ? 'text-[#263D32] border-[#526B57] bg-[#F4F1E6]/50'
+                  : 'text-gray-500 border-transparent hover:text-[#263D32] hover:bg-[#F4F1E6]/20'
+              }`}
             >
-              <span className="flex items-center justify-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Search {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()}
-              </span>
+              <span className="text-xl">✈️</span>
+              <span>Travel Transport</span>
+            </button>
+            <button
+              onClick={() => {
+                setBookingArea('STAY')
+                setActiveTab('HOTELS')
+              }}
+              className={`flex-1 py-4 px-4 text-center font-bold text-sm sm:text-base transition flex items-center justify-center gap-2 border-b-4 ${
+                bookingArea === 'STAY'
+                  ? 'text-[#263D32] border-[#526B57] bg-[#F4F1E6]/50'
+                  : 'text-gray-500 border-transparent hover:text-[#263D32] hover:bg-[#F4F1E6]/20'
+              }`}
+            >
+              <span className="text-xl">🏨</span>
+              <span>Hotels & Resorts (Stay)</span>
             </button>
           </div>
 
-          {/* Step 3.2 Service Search Results */}
+          {/* Step 33: Travel Sub-Tabs (Flights, Trains, Buses) */}
+          {bookingArea === 'TRAVEL' && (
+            <div className="flex gap-2 p-3 sm:p-4 bg-[#F4F1E6]/40 border-b overflow-x-auto" style={{ borderColor: '#E1DDD1' }}>
+              <button
+                onClick={() => {
+                  setTransportMode('FLIGHTS')
+                  setActiveTab('FLIGHTS')
+                }}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 border ${
+                  transportMode === 'FLIGHTS'
+                    ? 'bg-[#526B57] text-white border-[#526B57] shadow-sm'
+                    : 'bg-white text-[#263D32] border-[#E1DDD1] hover:border-[#526B57]'
+                }`}
+              >
+                <span>✈️</span> Flights
+              </button>
+              <button
+                onClick={() => {
+                  setTransportMode('TRAINS')
+                  setActiveTab('TRAINS')
+                }}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 border ${
+                  transportMode === 'TRAINS'
+                    ? 'bg-[#526B57] text-white border-[#526B57] shadow-sm'
+                    : 'bg-white text-[#263D32] border-[#E1DDD1] hover:border-[#526B57]'
+                }`}
+              >
+                <span>🚆</span> Trains
+              </button>
+              <button
+                onClick={() => {
+                  setTransportMode('BUSES')
+                  setActiveTab('BUSES')
+                }}
+                className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 border ${
+                  transportMode === 'BUSES'
+                    ? 'bg-[#526B57] text-white border-[#526B57] shadow-sm'
+                    : 'bg-white text-[#263D32] border-[#E1DDD1] hover:border-[#526B57]'
+                }`}
+              >
+                <span>🚌</span> Buses
+              </button>
+            </div>
+          )}
+
+          {/* Form Content Area */}
+          <div className="p-4 sm:p-6 lg:p-8">
+            {/* Step 37: Dedicated Flights Search Form UI */}
+            {bookingArea === 'TRAVEL' && transportMode === 'FLIGHTS' && (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.2fr,auto,1.2fr,1fr,1fr,1fr,1fr] gap-4 items-end">
+                  {/* Origin */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>From City / Airport</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter departure city or airport"
+                        value={flightOrigin}
+                        onChange={(e) => {
+                          setFlightOrigin(e.target.value)
+                          setShowFlightOriginDropdown(Boolean(e.target.value.trim()))
+                          if (flightErrors.origin) setFlightErrors((prev) => ({ ...prev, origin: '' }))
+                        }}
+                        onFocus={() => {
+                          if (flightOrigin.trim()) setShowFlightOriginDropdown(true)
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          flightErrors.origin ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: flightErrors.origin ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {flightOrigin ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFlightOrigin('')
+                            setShowFlightOriginDropdown(false)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear departure city"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {flightErrors.origin && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{flightErrors.origin}</p>
+                    )}
+                    {showFlightOriginDropdown && flightOrigin.trim() && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {cities.filter(c => c.toLowerCase().includes(flightOrigin.toLowerCase())).slice(0, 8).map((city) => (
+                          <div
+                            key={city}
+                            onClick={() => {
+                              setFlightOrigin(city)
+                              setShowFlightOriginDropdown(false)
+                              if (flightErrors.origin) setFlightErrors((prev) => ({ ...prev, origin: '' }))
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#F4F1E6] text-sm font-medium text-[#292A25]"
+                          >
+                            {city}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swap Button */}
+                  <div className="flex justify-center items-center py-1 xl:py-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curOrigin = flightOrigin
+                        const curDest = flightDestination
+                        setFlightOrigin(curDest)
+                        setFlightDestination(curOrigin)
+                      }}
+                      className="p-3 text-white rounded-xl transition shadow-md hover:scale-105"
+                      style={{ backgroundColor: '#C6A96B' }}
+                      title="Swap departure and arrival cities"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Destination */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>To City / Airport</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter destination city or airport"
+                        value={flightDestination}
+                        onChange={(e) => {
+                          setFlightDestination(e.target.value)
+                          setShowFlightDestDropdown(Boolean(e.target.value.trim()))
+                          if (flightErrors.destination) setFlightErrors((prev) => ({ ...prev, destination: '' }))
+                        }}
+                        onFocus={() => {
+                          if (flightDestination.trim()) setShowFlightDestDropdown(true)
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          flightErrors.destination ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: flightErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {flightDestination ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFlightDestination('')
+                            setShowFlightDestDropdown(false)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear destination city"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {flightErrors.destination && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{flightErrors.destination}</p>
+                    )}
+                    {showFlightDestDropdown && flightDestination.trim() && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {cities.filter(c => c.toLowerCase().includes(flightDestination.toLowerCase())).slice(0, 8).map((city) => (
+                          <div
+                            key={city}
+                            onClick={() => {
+                              setFlightDestination(city)
+                              setShowFlightDestDropdown(false)
+                              if (flightErrors.destination) setFlightErrors((prev) => ({ ...prev, destination: '' }))
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#F4F1E6] text-sm font-medium text-[#292A25]"
+                          >
+                            {city}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Departure Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Departure Date</label>
+                    <input
+                      type="date"
+                      min={getTodayIsoDate()}
+                      value={flightOutboundDate || departure}
+                      onChange={(e) => {
+                        setFlightOutboundDate(e.target.value)
+                        setDeparture(e.target.value)
+                        if (flightErrors.outboundDate) setFlightErrors((prev) => ({ ...prev, outboundDate: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        flightErrors.outboundDate ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: flightErrors.outboundDate ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {flightErrors.outboundDate && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{flightErrors.outboundDate}</p>
+                    )}
+                  </div>
+
+                  {/* Return Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Return Date (Optional)</label>
+                    <input
+                      type="date"
+                      min={flightOutboundDate || getTodayIsoDate()}
+                      value={flightReturnDate || returnDate}
+                      onChange={(e) => {
+                        setFlightReturnDate(e.target.value)
+                        setReturnDate(e.target.value)
+                        if (flightErrors.returnDate) setFlightErrors((prev) => ({ ...prev, returnDate: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        flightErrors.returnDate ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: flightErrors.returnDate ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {flightErrors.returnDate && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{flightErrors.returnDate}</p>
+                    )}
+                  </div>
+
+                  {/* Travelers */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Travelers</label>
+                    <select
+                      value={flightTravelers}
+                      onChange={(e) => setFlightTravelers(Number(e.target.value))}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Adult' : 'Adults'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Cabin Class */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Class</label>
+                    <select
+                      value={flightCabinClass}
+                      onChange={(e) => setFlightCabinClass(e.target.value as CabinClass)}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      <option value="Economy">Economy</option>
+                      <option value="Premium Economy">Premium Economy</option>
+                      <option value="Business">Business</option>
+                      <option value="First Class">First Class</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSearchFlights}
+                  disabled={flightIsLoading}
+                  className="w-full mt-6 py-4 text-white font-bold rounded-lg transition shadow-lg text-lg hover:shadow-xl transform hover:scale-[1.01] flex items-center justify-center gap-2 disabled:opacity-60"
+                  style={{ backgroundColor: '#526B57' }}
+                >
+                  {flightIsLoading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Searching Verified Flights...</span>
+                    </>
+                  ) : (
+                    <span>🔍 Search Flights</span>
+                  )}
+                </button>
+
+                {flightEnvelope?.notice && (
+                  <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold">
+                    ℹ️ {flightEnvelope.notice}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 38: Dedicated Trains Search Form UI */}
+            {bookingArea === 'TRAVEL' && transportMode === 'TRAINS' && (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.2fr,auto,1.2fr,1fr,1fr,1fr,1fr] gap-4 items-end">
+                  {/* Origin */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>From Station / City</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter departure station or city"
+                        value={trainOrigin}
+                        onChange={(e) => {
+                          setTrainOrigin(e.target.value)
+                          setShowTrainOriginDropdown(Boolean(e.target.value.trim()))
+                          if (trainErrors.origin) setTrainErrors((prev) => ({ ...prev, origin: '' }))
+                        }}
+                        onFocus={() => {
+                          if (trainOrigin.trim()) setShowTrainOriginDropdown(true)
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          trainErrors.origin ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: trainErrors.origin ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {trainOrigin ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTrainOrigin('')
+                            setShowTrainOriginDropdown(false)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear departure station"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {trainErrors.origin && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{trainErrors.origin}</p>
+                    )}
+                    {showTrainOriginDropdown && trainOrigin.trim() && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {trainStations.filter(s => s.name.toLowerCase().includes(trainOrigin.toLowerCase()) || s.code.toLowerCase().includes(trainOrigin.toLowerCase())).slice(0, 8).map((stn) => (
+                          <div
+                            key={stn.code}
+                            onClick={() => {
+                              setTrainOrigin(stn.code)
+                              setShowTrainOriginDropdown(false)
+                              if (trainErrors.origin) setTrainErrors((prev) => ({ ...prev, origin: '' }))
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#F4F1E6] text-sm font-medium text-[#292A25]"
+                          >
+                            {stn.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swap Button */}
+                  <div className="flex justify-center items-center py-1 xl:py-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curOrigin = trainOrigin
+                        const curDest = trainDestination
+                        setTrainOrigin(curDest)
+                        setTrainDestination(curOrigin)
+                      }}
+                      className="p-3 text-white rounded-xl transition shadow-md hover:scale-105"
+                      style={{ backgroundColor: '#C6A96B' }}
+                      title="Swap departure and arrival stations"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Destination */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>To Station / City</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter destination station or city"
+                        value={trainDestination}
+                        onChange={(e) => {
+                          setTrainDestination(e.target.value)
+                          setShowTrainDestDropdown(Boolean(e.target.value.trim()))
+                          if (trainErrors.destination) setTrainErrors((prev) => ({ ...prev, destination: '' }))
+                        }}
+                        onFocus={() => {
+                          if (trainDestination.trim()) setShowTrainDestDropdown(true)
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          trainErrors.destination ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: trainErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {trainDestination ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTrainDestination('')
+                            setShowTrainDestDropdown(false)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear destination station"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {trainErrors.destination && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{trainErrors.destination}</p>
+                    )}
+                    {showTrainDestDropdown && trainDestination.trim() && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {trainStations.filter(s => s.name.toLowerCase().includes(trainDestination.toLowerCase()) || s.code.toLowerCase().includes(trainDestination.toLowerCase())).slice(0, 8).map((stn) => (
+                          <div
+                            key={stn.code}
+                            onClick={() => {
+                              setTrainDestination(stn.code)
+                              setShowTrainDestDropdown(false)
+                              if (trainErrors.destination) setTrainErrors((prev) => ({ ...prev, destination: '' }))
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#F4F1E6] text-sm font-medium text-[#292A25]"
+                          >
+                            {stn.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Journey Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Journey Date</label>
+                    <input
+                      type="date"
+                      min={getTodayIsoDate()}
+                      value={trainDate || departure}
+                      onChange={(e) => {
+                        setTrainDate(e.target.value)
+                        setDeparture(e.target.value)
+                        if (trainErrors.date) setTrainErrors((prev) => ({ ...prev, date: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        trainErrors.date ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: trainErrors.date ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {trainErrors.date && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{trainErrors.date}</p>
+                    )}
+                  </div>
+
+                  {/* Travelers */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Travelers</label>
+                    <select
+                      value={trainTravelers}
+                      onChange={(e) => setTrainTravelers(Number(e.target.value))}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((num) => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Adult' : 'Adults'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Class */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Class</label>
+                    <select
+                      value={trainClass}
+                      onChange={(e) => setTrainClass(e.target.value)}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      <option value="ALL">All Classes</option>
+                      <option value="1A">AC First Class (1A)</option>
+                      <option value="2A">AC 2 Tier (2A)</option>
+                      <option value="3A">AC 3 Tier (3A)</option>
+                      <option value="3E">AC 3 Economy (3E)</option>
+                      <option value="SL">Sleeper Class (SL)</option>
+                      <option value="CC">AC Chair Car (CC)</option>
+                      <option value="2S">Second Sitting (2S)</option>
+                    </select>
+                  </div>
+
+                  {/* Quota */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Quota</label>
+                    <select
+                      value={trainQuota}
+                      onChange={(e) => setTrainQuota(e.target.value)}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      <option value="GN">General (GN)</option>
+                      <option value="TQ">Tatkal (TQ)</option>
+                      <option value="LD">Ladies (LD)</option>
+                      <option value="SS">Senior Citizen (SS)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSearchTrains}
+                  disabled={trainIsLoading}
+                  className="w-full mt-6 py-4 text-white font-bold rounded-lg transition shadow-lg text-lg hover:shadow-xl transform hover:scale-[1.01] flex items-center justify-center gap-2 disabled:opacity-60"
+                  style={{ backgroundColor: '#526B57' }}
+                >
+                  {trainIsLoading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Searching Verified Trains...</span>
+                    </>
+                  ) : (
+                    <span>🔍 Search Trains</span>
+                  )}
+                </button>
+
+                {trainEnvelope?.notice && (
+                  <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold">
+                    ℹ️ {trainEnvelope.notice}
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 rounded-lg bg-[#F4F1E6]/60 border border-[#E1DDD1] text-xs text-gray-600">
+                  <span className="font-bold text-[#263D32]">Truthfulness Policy: </span>
+                  Live train searches are queried directly via the Qrail Railway Provider. If provider credentials are offline or restricted, Train search is currently unavailable and will honestly report provider status. XPLORA never invents fake train timings, unverified seat availability, or fictitious booking confirmations. Real-time booking handoffs link directly to official IRCTC.
+                </div>
+              </div>
+            )}
+
+            {/* Dedicated Bus Search Form UI (Triangle Distance + ₹13/km + redBus redirect) */}
+            {bookingArea === 'TRAVEL' && transportMode === 'BUSES' && (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.3fr,auto,1.3fr,1fr,0.8fr,1.1fr,auto] gap-4 items-end">
+                  {/* Origin */}
+                  <div ref={busOriginRef} className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>From City</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter departure city"
+                        value={busOrigin}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setBusOrigin(val)
+                          if (val.trim()) {
+                            setShowBusOriginDropdown(true)
+                            fetchBusSuggestions(val, 'origin')
+                          } else {
+                            setShowBusOriginDropdown(false)
+                            setBusOriginSuggestions([])
+                          }
+                          if (busErrors.origin) setBusErrors((prev) => ({ ...prev, origin: '' }))
+                        }}
+                        onFocus={() => {
+                          if (busOrigin.trim()) {
+                            setShowBusOriginDropdown(true)
+                            fetchBusSuggestions(busOrigin, 'origin')
+                          }
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          busErrors.origin ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: busErrors.origin ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {busOrigin ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBusOrigin('')
+                            setShowBusOriginDropdown(false)
+                            setBusOriginSuggestions([])
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear from city"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {busErrors.origin && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{busErrors.origin}</p>
+                    )}
+                    {showBusOriginDropdown && busOriginSuggestions.length > 0 && (
+                      <div className="absolute z-30 w-full mt-1 bg-white border-2 rounded-xl shadow-xl max-h-60 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {busOriginSuggestions.map((item) => (
+                          <div
+                            key={item.place}
+                            onClick={() => {
+                              setBusOrigin(item.place)
+                              setShowBusOriginDropdown(false)
+                              if (busErrors.origin) setBusErrors((prev) => ({ ...prev, origin: '' }))
+                            }}
+                            className="px-4 py-2.5 cursor-pointer hover:bg-[#F4F1E6] flex items-center justify-between border-b last:border-0 border-gray-100 transition"
+                          >
+                            <div>
+                              <span className="text-sm font-bold text-[#263D32]">{item.place}</span>
+                              <span className="text-xs text-gray-500 ml-1.5">({item.state})</span>
+                            </div>
+                            <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                              {item.distanceFromCentre} km to centre
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Swap Button */}
+                  <div className="hidden xl:flex items-center justify-center pb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const curOrigin = busOrigin
+                        const curDest = busDestination
+                        setBusOrigin(curDest)
+                        setBusDestination(curOrigin)
+                      }}
+                      className="p-3 rounded-full hover:bg-[#F4F1E6] text-gray-500 hover:text-[#263D32] transition border border-[#E1DDD1]"
+                      title="Swap Source and Destination"
+                    >
+                      🔄
+                    </button>
+                  </div>
+
+                  {/* Destination */}
+                  <div ref={busDestRef} className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>To Destination City</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter destination city"
+                        value={busDestination}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setBusDestination(val)
+                          if (val.trim()) {
+                            setShowBusDestDropdown(true)
+                            fetchBusSuggestions(val, 'dest')
+                          } else {
+                            setShowBusDestDropdown(false)
+                            setBusDestSuggestions([])
+                          }
+                          if (busErrors.destination) setBusErrors((prev) => ({ ...prev, destination: '' }))
+                        }}
+                        onFocus={() => {
+                          if (busDestination.trim()) {
+                            setShowBusDestDropdown(true)
+                            fetchBusSuggestions(busDestination, 'dest')
+                          }
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          busErrors.destination ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: busErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {busDestination ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBusDestination('')
+                            setShowBusDestDropdown(false)
+                            setBusDestSuggestions([])
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear destination city"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {busErrors.destination && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{busErrors.destination}</p>
+                    )}
+                    {showBusDestDropdown && busDestSuggestions.length > 0 && (
+                      <div className="absolute z-30 w-full mt-1 bg-white border-2 rounded-xl shadow-xl max-h-60 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {busDestSuggestions.map((item) => (
+                          <div
+                            key={item.place}
+                            onClick={() => {
+                              setBusDestination(item.place)
+                              setShowBusDestDropdown(false)
+                              if (busErrors.destination) setBusErrors((prev) => ({ ...prev, destination: '' }))
+                            }}
+                            className="px-4 py-2.5 cursor-pointer hover:bg-[#F4F1E6] flex items-center justify-between border-b last:border-0 border-gray-100 transition"
+                          >
+                            <div>
+                              <span className="text-sm font-bold text-[#263D32]">{item.place}</span>
+                              <span className="text-xs text-gray-500 ml-1.5">({item.state})</span>
+                            </div>
+                            <span className="text-[11px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                              {item.distanceFromCentre} km to centre
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Traveler Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Traveler Date</label>
+                    <input
+                      type="date"
+                      min={getTodayIsoDate()}
+                      value={busDate}
+                      onChange={(e) => {
+                        setBusDate(e.target.value)
+                        if (busErrors.date) setBusErrors((prev) => ({ ...prev, date: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        busErrors.date ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: busErrors.date ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {busErrors.date && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{busErrors.date}</p>
+                    )}
+                  </div>
+
+                  {/* Travelers / Seats */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Seats</label>
+                    <select
+                      value={busTravelers}
+                      onChange={(e) => setBusTravelers(Number(e.target.value))}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((num) => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Seat' : 'Seats'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Category Preference */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Fleet Type</label>
+                    <select
+                      value={busCategory}
+                      onChange={(e) => setBusCategory(e.target.value as any)}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      <option value="ALL">Auto (&gt;100km Travels, &le;100km Local)</option>
+                      <option value="TRAVELS">Travels (Intercity &gt;100 km)</option>
+                      <option value="LOCAL">Local Bus (Regional &le;100 km)</option>
+                    </select>
+                  </div>
+
+                  {/* Search Button */}
+                  <div>
+                    <button
+                      onClick={handleSearchBuses}
+                      disabled={busIsLoading}
+                      className="w-full px-6 py-3 text-white font-bold rounded-lg shadow-md transition hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      style={{ backgroundColor: '#263D32' }}
+                    >
+                      {busIsLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Calculating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🔍</span>
+                          <span>Search Buses</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Popular Transit Hub Quick Pills */}
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-[#526B57]">Popular Hubs:</span>
+                  {['Delhi', 'Mumbai', 'Pune', 'Nagpur', 'Chandigarh', 'Bengaluru', 'Jaipur', 'Ahmedabad', 'Manali'].map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => {
+                        if (!busOrigin.trim()) {
+                          setBusOrigin(city)
+                          if (busErrors.origin) setBusErrors((prev) => ({ ...prev, origin: '' }))
+                        } else {
+                          setBusDestination(city)
+                          if (busErrors.destination) setBusErrors((prev) => ({ ...prev, destination: '' }))
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F4F1E6] hover:bg-[#E1DDD1] text-[#263D32] transition border border-[#E1DDD1]"
+                    >
+                      + {city}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Notice & Rule Explanation Card */}
+                <div className="mt-4 p-4 rounded-xl bg-linear-to-r from-[#F4F1E6]/80 to-[#ECE7D8]/60 border border-[#E1DDD1] text-xs text-[#263D32]">
+                  <div className="flex flex-wrap items-center gap-2 font-bold mb-1">
+                    <span className="px-2 py-0.5 rounded bg-[#263D32] text-white text-[10px] uppercase tracking-wider">Formula Protocol</span>
+                    <span>Centre Triangle Distance Calculation & ₹13 / km Mathematical Pricing</span>
+                  </div>
+                  <p className="text-gray-600 leading-relaxed">
+                    Shortest distance between cities is derived from the Centre reference (Nagpur Zero Mile Stone) using the Triangle Inequality. If distance is greater than 100 km, premium <strong>Travels</strong> coaches operate; otherwise, <strong>Local Buses</strong> run for short-haul journeys. Fares are calculated strictly at <strong>₹13 / km</strong>, with instant direct ticket handoff via <strong>redBus (<a href="https://www.redbus.in/" target="_blank" rel="noopener noreferrer" className="text-[#D84E55] underline font-bold">redbus.in</a>)</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 40: Dedicated Stay Search Form UI */}
+            {bookingArea === 'STAY' && (
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1.5fr,1fr,1fr,1fr,1fr] gap-4 items-end">
+                  {/* Destination */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Destination City / Area</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter destination city or area"
+                        value={stayDestination}
+                        onChange={(e) => {
+                          setStayDestination(e.target.value)
+                          setShowStayDestDropdown(Boolean(e.target.value.trim()))
+                          if (stayErrors.destination) setStayErrors((prev) => ({ ...prev, destination: '' }))
+                        }}
+                        onFocus={() => {
+                          if (stayDestination.trim()) setShowStayDestDropdown(true)
+                        }}
+                        className={`w-full px-4 py-3 pr-8 border-2 rounded-lg focus:outline-none font-semibold ${
+                          stayErrors.destination ? 'border-red-500' : ''
+                        }`}
+                        style={{ borderColor: stayErrors.destination ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                      />
+                      {stayDestination ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStayDestination('')
+                            setShowStayDestDropdown(false)
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold"
+                          title="Clear destination"
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
+                    {stayErrors.destination && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{stayErrors.destination}</p>
+                    )}
+                    {showStayDestDropdown && stayDestination.trim() && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 rounded-lg shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: '#E1DDD1' }}>
+                        {cities.filter(c => c.toLowerCase().includes(stayDestination.toLowerCase())).slice(0, 8).map((city) => (
+                          <div
+                            key={city}
+                            onClick={() => {
+                              setStayDestination(city)
+                              setShowStayDestDropdown(false)
+                              if (stayErrors.destination) setStayErrors((prev) => ({ ...prev, destination: '' }))
+                            }}
+                            className="px-4 py-2 cursor-pointer hover:bg-[#F4F1E6] text-sm font-medium text-[#292A25]"
+                          >
+                            {city}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Check-In Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Check-In Date</label>
+                    <input
+                      type="date"
+                      min={getTodayIsoDate()}
+                      value={stayCheckIn}
+                      onChange={(e) => {
+                        setStayCheckIn(e.target.value)
+                        if (stayErrors.checkIn) setStayErrors((prev) => ({ ...prev, checkIn: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        stayErrors.checkIn ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: stayErrors.checkIn ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {stayErrors.checkIn && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{stayErrors.checkIn}</p>
+                    )}
+                  </div>
+
+                  {/* Check-Out Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Check-Out Date</label>
+                    <input
+                      type="date"
+                      min={stayCheckIn || getTodayIsoDate()}
+                      value={stayCheckOut}
+                      onChange={(e) => {
+                        setStayCheckOut(e.target.value)
+                        if (stayErrors.checkOut) setStayErrors((prev) => ({ ...prev, checkOut: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        stayErrors.checkOut ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: stayErrors.checkOut ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    />
+                    {stayErrors.checkOut && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{stayErrors.checkOut}</p>
+                    )}
+                  </div>
+
+                  {/* Guests */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Guests</label>
+                    <select
+                      value={stayGuests}
+                      onChange={(e) => setStayGuests(Number(e.target.value))}
+                      className="w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold"
+                      style={{ borderColor: '#E1DDD1', color: '#292A25' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Guest' : 'Guests'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Rooms */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: '#292A25' }}>Rooms</label>
+                    <select
+                      value={stayRooms}
+                      onChange={(e) => {
+                        setStayRooms(Number(e.target.value))
+                        if (stayErrors.rooms) setStayErrors((prev) => ({ ...prev, rooms: '' }))
+                      }}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none font-semibold ${
+                        stayErrors.rooms ? 'border-red-500' : ''
+                      }`}
+                      style={{ borderColor: stayErrors.rooms ? '#EF4444' : '#E1DDD1', color: '#292A25' }}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Room' : 'Rooms'}
+                        </option>
+                      ))}
+                    </select>
+                    {stayErrors.rooms && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">{stayErrors.rooms}</p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSearchStays}
+                  disabled={stayIsLoading}
+                  className="w-full mt-6 py-4 text-white font-bold rounded-lg transition shadow-lg text-lg hover:shadow-xl transform hover:scale-[1.01] flex items-center justify-center gap-2 disabled:opacity-60"
+                  style={{ backgroundColor: '#526B57' }}
+                >
+                  {stayIsLoading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Searching Verified Hotels...</span>
+                    </>
+                  ) : (
+                    <span>🔍 Search Hotels & Resorts</span>
+                  )}
+                </button>
+
+                {stayEnvelope?.notice && (
+                  <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold">
+                    ℹ️ {stayEnvelope.notice}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Results Area (Step 42 & 43: Refactored props, zero fake booking alerts) */}
           <FlightHotelResults 
-            activeTab={activeTab}
-            flights={flightsResults}
-            hotels={hotelsResults}
-            isLoading={isSearchLoading}
-            onBook={(item) => alert(`🎉 Booking Confirmed for ${item.airline || item.name}! Details saved.`)}
+            bookingArea={bookingArea}
+            transportMode={transportMode}
+            flightEnvelope={flightEnvelope}
+            stayEnvelope={stayEnvelope}
+            trainEnvelope={trainEnvelope}
+            busEnvelope={busEnvelope}
+            isLoading={
+              bookingArea === 'STAY' 
+                ? stayIsLoading 
+                : transportMode === 'TRAINS' 
+                  ? trainIsLoading 
+                  : transportMode === 'BUSES'
+                    ? busIsLoading
+                    : flightIsLoading
+            }
+            onRetry={
+              bookingArea === 'STAY' 
+                ? handleSearchStays 
+                : transportMode === 'TRAINS' 
+                  ? handleSearchTrains 
+                  : transportMode === 'BUSES'
+                    ? handleSearchBuses
+                    : handleSearchFlights
+            }
+            onTrackTicket={handleTrackTicket}
+            trainSearchMeta={{
+              date: trainDate,
+              class: trainClass,
+              quota: trainQuota,
+              travelers: trainTravelers,
+            }}
+            busSearchMeta={{
+              date: busDate,
+              category: busCategory,
+              travelers: busTravelers,
+            }}
           />
         </div>
 
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl" style={{ borderColor: '#526B57' }}>
-            <div className="text-3xl mb-2">🎫</div>
-            <h3 className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>Track Ticket</h3>
+          <div 
+            onClick={() => setShowTrackTicketModal(true)}
+            className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl cursor-pointer group hover:scale-[1.02] duration-200 focus:outline-none focus:ring-2 focus:ring-[#526B57]" 
+            style={{ borderColor: '#526B57' }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setShowTrackTicketModal(true);
+              }
+            }}
+          >
+            <div className="flex items-start justify-between">
+              <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">🎫</div>
+              {trackedTickets.length > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#526B57] text-white shadow-xs">
+                  {trackedTickets.length} {trackedTickets.length === 1 ? 'Ticket' : 'Tickets'}
+                </span>
+              )}
+            </div>
+            <h3 className="font-bold text-lg mb-1 flex items-center justify-between" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>
+              <span>Track Ticket</span>
+              <span className="text-xs text-[#526B57] font-sans font-normal group-hover:translate-x-1 transition-transform">Check Status →</span>
+            </h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Check your booking status</p>
           </div>
           <Link
@@ -1516,6 +2928,40 @@ export default function Home() {
         currentUser={currentUser}
         onSelectTrip={handleSelectSavedTrip}
       />
+
+      {/* Track Ticket Window Modal */}
+      <TrackTicketModal
+        isOpen={showTrackTicketModal}
+        onClose={() => setShowTrackTicketModal(false)}
+        tickets={trackedTickets}
+        onRemoveTicket={handleRemoveTicket}
+        onUpdatePnr={handleUpdatePnr}
+        onAddTicket={handleAddManualTicket}
+      />
+
+      {/* Floating Ticket Tracked Toast Notification */}
+      {ticketToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#263D32] text-white px-5 py-3.5 rounded-xl shadow-2xl border border-emerald-400/40 flex items-center gap-3 animate-slideUp">
+          <span className="text-xl">🎟️</span>
+          <div>
+            <div className="text-xs font-bold text-emerald-300">Ticket Tracked</div>
+            <div className="text-xs text-white">{ticketToast.message}</div>
+          </div>
+          <button 
+            onClick={() => setShowTrackTicketModal(true)}
+            className="ml-2 px-2.5 py-1 text-xs font-bold rounded bg-[#C6A96B] text-[#263D32] hover:bg-[#d8bb7a] transition cursor-pointer"
+          >
+            View
+          </button>
+          <button 
+            onClick={() => setTicketToast(null)}
+            className="text-white/60 hover:text-white text-sm cursor-pointer p-1"
+            aria-label="Dismiss toast"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Step 3.3 Floating AI Assistant Chatbot */}
       <AIChatDrawer

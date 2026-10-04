@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     // 1. Extract Destination with extended catalog & smart patterns
     let destination = '';
     const knownPlaces = [
-      'goa', 'sikkim', 'gangtok', 'nagpur', 'manali', 'solang', 'kullu',
+      'shirdi', 'goa', 'sikkim', 'gangtok', 'nagpur', 'manali', 'solang', 'kullu',
       'mumbai', 'bombay', 'delhi', 'new delhi', 'kerala', 'munnar', 'alleppey',
       'jaipur', 'pink city', 'kashmir', 'srinagar', 'gulmarg', 'pahalgam',
       'ladakh', 'leh', 'udaipur', 'jaisalmer', 'spiti', 'spiti valley',

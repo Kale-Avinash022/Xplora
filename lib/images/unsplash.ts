@@ -205,6 +205,20 @@ export class UnsplashProvider {
 
     const trackingKey = `unsplash:download:${photoId}`;
 
+    // Security check: validate downloadLocation to prevent SSRF and API key leakage
+    try {
+      const parsedUrl = new URL(downloadLocation);
+      if (
+        parsedUrl.protocol !== 'https:' ||
+        !(parsedUrl.hostname === 'api.unsplash.com' || parsedUrl.hostname.endsWith('.unsplash.com'))
+      ) {
+        console.warn(`[Unsplash] Rejected invalid or untrusted downloadLocation: ${downloadLocation}`);
+        return;
+      }
+    } catch {
+      return;
+    }
+
     try {
       // Check if already tracked to avoid duplicate pings
       const alreadyTracked = await prisma.placeCache.findUnique({

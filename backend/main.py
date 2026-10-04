@@ -63,6 +63,7 @@ class ItineraryResponse(BaseModel):
     travelStyle: str
     weatherPreview: WeatherPreview
     dayPlans: List[DayPlan]
+    budgetWarning: Optional[str] = None
 
 # REAL CITY & STATE SPECIFIC POPULAR ATTRACTIONS KNOWLEDGE BASE
 POPULAR_DESTINATIONS_DATA = {

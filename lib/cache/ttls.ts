@@ -11,4 +11,6 @@ export const CACHE_TTLS = {
   EXCHANGE_RATES: 6 * 60 * 60,         // Exchange rates: 6 hours
   FINISHED_ITINERARY: 6 * 60 * 60,     // Finished itinerary: 6 hours
   NEGATIVE_CACHE: 7 * 24 * 60 * 60,    // Negative cache (no results): 7 days
+  TRAIN_SEARCH: 30 * 60,               // Train schedules & routes: 30 minutes
+  TRAIN_AVAILABILITY: 10 * 60,         // Live seat availability: 10 minutes
 } as const;

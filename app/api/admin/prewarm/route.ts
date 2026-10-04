@@ -12,9 +12,9 @@ const PREWARM_CITIES = [
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get('Authorization') || '';
-  const expectedSecret = process.env.PREWARM_SECRET || 'xplora_prewarm_secret';
+  const expectedSecret = process.env.PREWARM_SECRET?.trim();
 
-  if (!authHeader.startsWith('Bearer ') || authHeader.slice(7).trim() !== expectedSecret) {
+  if (!expectedSecret || !authHeader.startsWith('Bearer ') || authHeader.slice(7).trim() !== expectedSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
