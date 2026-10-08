@@ -102,8 +102,44 @@ async function runTrackTicketTests() {
   );
   console.log('✓ Test 4 Passed: Track Ticket card interactivity and modal integration confirmed.\n');
 
+  // Test 5: Verify Book Hotel and Hotel Tracking features
+  console.log('Test 5: Verify "Book Hotel" redirect to Booking.com and Track Bookings Hotel section');
+  assert.ok(
+    typesContent.includes('export interface TrackedHotelBooking'),
+    'TrackedHotelBooking interface must be exported in lib/types.ts'
+  );
+  assert.ok(
+    resultsContent.includes('Book Hotel'),
+    'FlightHotelResults must contain "Book Hotel" button'
+  );
+  assert.ok(
+    resultsContent.includes('https://www.booking.com/'),
+    'Book Hotel button must redirect to Booking.com'
+  );
+  assert.ok(
+    resultsContent.includes('onTrackHotel?: (hotel: TrackedHotelBooking) => void'),
+    'FlightHotelResultsProps must accept onTrackHotel callback'
+  );
+  assert.ok(
+    modalContent.includes('HOTEL BOOKING'),
+    'TrackTicketModal must display "HOTEL BOOKING" header above hotel cards'
+  );
+  assert.ok(
+    modalContent.includes('Travel Bookings') && modalContent.includes('Hotel Bookings'),
+    'TrackTicketModal must have two distinct primary sections: Travel and Hotel'
+  );
+  assert.ok(
+    pageContent.includes('Track Bookings'),
+    'Quick links card must be updated to "Track Bookings"'
+  );
+  assert.ok(
+    pageContent.includes('onTrackHotel={handleTrackHotel}'),
+    'app/page.tsx must wire handleTrackHotel to FlightHotelResults'
+  );
+  console.log('✓ Test 5 Passed: Book Hotel and Track Bookings two-section integration verified.\n');
+
   console.log('================================================================');
-  console.log('🎉 ALL TRACK TICKET VERIFICATION TESTS PASSED SUCCESSFULLY!');
+  console.log('🎉 ALL TRACK BOOKINGS & TICKET VERIFICATION TESTS PASSED SUCCESSFULLY!');
   console.log('================================================================\n');
 }
 

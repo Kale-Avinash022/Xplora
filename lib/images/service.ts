@@ -111,37 +111,45 @@ export class ImageService {
     const cleanDest = destination.trim().toLowerCase();
     const cacheKey = normalizeKey('imgpool', `${cleanDest}:${category}`);
 
-    return getOrSet(cacheKey, CACHE_TTLS.PHOTO_POOL_PER_CITY, async () => {
+    const pool = await getOrSet(cacheKey, CACHE_TTLS.PHOTO_POOL_PER_CITY, async () => {
       const { primary, backup } = this.getProvidersOrder();
       const query = `${destination} ${category}`;
-      let pool = await this.queryProvider(primary, query, 30);
+      let fetchedPool = await this.queryProvider(primary, query, 30);
 
       // If fewer than 8 photos, top up with backup provider
-      if (pool.length < 8) {
+      if (fetchedPool.length < 8) {
         const backupPhotos = await this.queryProvider(backup, query, 30);
-        const existingIds = new Set(pool.map((p) => p.id));
+        const existingIds = new Set(fetchedPool.map((p) => p.id));
         for (const bp of backupPhotos) {
           if (!existingIds.has(bp.id)) {
-            pool.push(bp);
+            fetchedPool.push(bp);
             existingIds.add(bp.id);
           }
         }
       }
 
       // Fallback: search just destination if category search returned too few
-      if (pool.length < 4) {
+      if (fetchedPool.length < 4) {
         const generalPhotos = await this.searchWithFailover(destination, 20);
-        const existingIds = new Set(pool.map((p) => p.id));
+        const existingIds = new Set(fetchedPool.map((p) => p.id));
         for (const gp of generalPhotos) {
           if (!existingIds.has(gp.id)) {
-            pool.push(gp);
+            fetchedPool.push(gp);
             existingIds.add(gp.id);
           }
         }
       }
 
-      return pool;
+      return fetchedPool;
     });
+
+    // If cache returned empty (e.g. from previous empty runs), retry live fetch directly
+    if (!pool || pool.length === 0) {
+      const fallbackPhotos = await this.searchWithFailover(destination, 20);
+      return fallbackPhotos;
+    }
+
+    return pool;
   }
 
   /**
@@ -156,35 +164,40 @@ export class ImageService {
     const cleanDest = destination.trim().toLowerCase();
     const cacheKey = normalizeKey('imgplace', `${cleanDest}:${cleanPlace.replace(/[^a-z0-9]/g, '')}`);
 
-    return getOrSet(cacheKey, CACHE_TTLS.PHOTO_POOL_PER_CITY, async () => {
-      const { primary, backup } = this.getProvidersOrder();
-      const query = `${placeName} ${destination}`;
+    return getOrSet(
+      cacheKey,
+      CACHE_TTLS.PHOTO_POOL_PER_CITY,
+      async () => {
+        const { primary, backup } = this.getProvidersOrder();
+        const query = `${placeName} ${destination}`;
 
-      // Search primary with per_page=5
-      let candidates = await this.queryProvider(primary, query, 5);
+        // Search primary with per_page=5
+        let candidates = await this.queryProvider(primary, query, 5);
 
-      // If primary returned nothing relevant, try backup
-      if (candidates.length === 0) {
-        candidates = await this.queryProvider(backup, query, 5);
-      }
+        // If primary returned nothing relevant, try backup
+        if (candidates.length === 0) {
+          candidates = await this.queryProvider(backup, query, 5);
+        }
 
-      // Filter candidate: accept only if alt, description, or credit mentions place name tokens or destination city
-      const placeTokens = placeName
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((t) => t.length > 3 && !['temple', 'fort', 'park', 'garden', 'palace', 'caves'].includes(t));
+        // Filter candidate: accept only if alt, description, or credit mentions place name tokens or destination city
+        const placeTokens = placeName
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((t) => t.length > 3 && !['temple', 'fort', 'park', 'garden', 'palace', 'caves'].includes(t));
 
-      const destToken = destination.toLowerCase();
+        const destToken = destination.toLowerCase();
 
-      const matchedPhoto = candidates.find((c) => {
-        const text = (c.alt || '').toLowerCase();
-        const hasDest = text.includes(destToken);
-        const hasPlaceToken = placeTokens.some((token) => text.includes(token));
-        return hasPlaceToken || (hasDest && placeTokens.length === 0);
-      });
+        const matchedPhoto = candidates.find((c) => {
+          const text = (c.alt || '').toLowerCase();
+          const hasDest = text.includes(destToken);
+          const hasPlaceToken = placeTokens.some((token) => text.includes(token));
+          return hasPlaceToken || (hasDest && placeTokens.length === 0);
+        });
 
-      return matchedPhoto || null;
-    });
+        return matchedPhoto || null;
+      },
+      { isNegative: true, negativeTtlSeconds: CACHE_TTLS.NEGATIVE_CACHE }
+    );
   }
 
   /**

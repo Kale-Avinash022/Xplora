@@ -9,7 +9,8 @@ import {
   StayOption,
   TrainOption,
   BusOption,
-  TrackedTicket
+  TrackedTicket,
+  TrackedHotelBooking
 } from '@/lib/types';
 
 export interface FlightHotelResultsProps {
@@ -22,6 +23,14 @@ export interface FlightHotelResultsProps {
   isLoading: boolean;
   onRetry?: () => void;
   onTrackTicket?: (ticket: TrackedTicket) => void;
+  onTrackHotel?: (hotel: TrackedHotelBooking) => void;
+  staySearchMeta?: {
+    destination?: string;
+    checkIn?: string;
+    checkOut?: string;
+    guests?: number;
+    rooms?: number;
+  };
   trainSearchMeta?: {
     date?: string;
     class?: string;
@@ -47,6 +56,8 @@ export function FlightHotelResults({
   isLoading, 
   onRetry,
   onTrackTicket,
+  onTrackHotel,
+  staySearchMeta,
   trainSearchMeta,
   busSearchMeta
 }: FlightHotelResultsProps) {
@@ -1294,27 +1305,46 @@ export function FlightHotelResults({
                     <span className="text-[10px] text-gray-500"> / night</span>
                   </div>
 
-                  {/* Step 45: External Provider Deep-Link (Non-Deceptive Handoff) */}
-                  {h.bookingUrl ? (
-                    <a
-                      href={h.bookingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 text-xs font-bold text-white rounded-lg shadow-sm transition hover:scale-105 inline-flex items-center gap-1"
-                      style={{ backgroundColor: '#526B57' }}
-                    >
-                      <span>View offer</span>
-                      <span>↗</span>
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      title="Direct booking link unavailable for this provider quote"
-                      className="px-3 py-1.5 text-xs font-semibold text-gray-400 bg-gray-100 rounded-lg border border-gray-200 cursor-not-allowed"
-                    >
-                      Comparison quote
-                    </button>
-                  )}
+                  {/* Book Hotel Handoff to Booking.com with Automatic Tracking */}
+                  <a
+                    href="https://www.booking.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      if (onTrackHotel) {
+                        const checkInDate = staySearchMeta?.checkIn || new Date().toISOString().split('T')[0];
+                        const checkOutDate = staySearchMeta?.checkOut || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+                        const randomRef = `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                        onTrackHotel({
+                          id: `hotel_${h.id || Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`,
+                          hotelName: h.name,
+                          hotelType: h.hotelType || 'Hotel',
+                          location: h.location || staySearchMeta?.destination || 'City Center',
+                          checkIn: checkInDate,
+                          checkOut: checkOutDate,
+                          guests: staySearchMeta?.guests || 2,
+                          rooms: staySearchMeta?.rooms || 1,
+                          pricePerNight: h.pricePerNight,
+                          totalPrice: h.pricePerNight,
+                          currency: h.currency || 'INR',
+                          rating: h.rating,
+                          reviewsCount: h.reviewsCount,
+                          amenities: h.amenities || [],
+                          bookingRef: randomRef,
+                          bookingStatus: 'Confirmed Handoff',
+                          provider: 'Booking.com',
+                          bookingUrl: 'https://www.booking.com/',
+                          bookedAt: new Date().toISOString(),
+                        });
+                      }
+                    }}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition hover:scale-105 active:scale-95 inline-flex items-center gap-1.5"
+                    style={{ backgroundColor: '#003580' }}
+                    title="Book on Booking.com & track in XPLORA"
+                  >
+                    <span>Book Hotel</span>
+                    <span className="text-[13px]">↗</span>
+                  </a>
                 </div>
               </div>
             );

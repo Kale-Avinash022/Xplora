@@ -8,6 +8,13 @@ import { RequestTracker } from '@/lib/perf/timing';
 export interface CacheOptions {
   tracker?: RequestTracker;
   isNegative?: boolean; // Cache null or empty results
+  negativeTtlSeconds?: number;
+}
+
+function isValueEmpty<T>(val: T): boolean {
+  if (val === null || val === undefined) return true;
+  if (Array.isArray(val) && val.length === 0) return true;
+  return false;
 }
 
 interface CacheRecord<T> {
@@ -175,16 +182,21 @@ export async function getOrSet<T>(
   // 1. Check L1 Memory Cache
   const l1Record = memoryL1.get<T>(key);
   if (l1Record) {
-    const age = now - l1Record.fetchedAt;
-    if (age <= ttlMs) {
-      options?.tracker?.recordCacheHit();
-      return l1Record.value;
-    }
-    // Stale-while-revalidate window
-    if (age <= staleWindowMs) {
-      options?.tracker?.recordCacheStale();
-      triggerBackgroundRefresh(key, ttlSeconds, loader, options);
-      return l1Record.value;
+    const isValEmpty = isValueEmpty(l1Record.value);
+    if (!isValEmpty || options?.isNegative) {
+      const age = now - l1Record.fetchedAt;
+      const effTtl = isValEmpty && options?.negativeTtlSeconds ? options.negativeTtlSeconds : l1Record.ttlSeconds;
+      const effTtlMs = effTtl * 1000;
+      if (age <= effTtlMs) {
+        options?.tracker?.recordCacheHit();
+        return l1Record.value;
+      }
+      // Stale-while-revalidate window
+      if (age <= effTtlMs * 2 && !isValEmpty) {
+        options?.tracker?.recordCacheStale();
+        triggerBackgroundRefresh(key, ttlSeconds, loader, options);
+        return l1Record.value;
+      }
     }
   }
 
@@ -197,19 +209,25 @@ export async function getOrSet<T>(
   }
 
   if (l2Record) {
-    const age = now - l2Record.fetchedAt;
-    // Populate L1
-    memoryL1.set(key, l2Record);
+    const isValEmpty = isValueEmpty(l2Record.value);
+    if (!isValEmpty || options?.isNegative) {
+      const age = now - l2Record.fetchedAt;
+      const effTtl = isValEmpty && options?.negativeTtlSeconds ? options.negativeTtlSeconds : l2Record.ttlSeconds;
+      const effTtlMs = effTtl * 1000;
 
-    if (age <= ttlMs) {
-      options?.tracker?.recordCacheHit();
-      return l2Record.value;
-    }
+      // Populate L1
+      memoryL1.set(key, l2Record);
 
-    if (age <= staleWindowMs) {
-      options?.tracker?.recordCacheStale();
-      triggerBackgroundRefresh(key, ttlSeconds, loader, options);
-      return l2Record.value;
+      if (age <= effTtlMs) {
+        options?.tracker?.recordCacheHit();
+        return l2Record.value;
+      }
+
+      if (age <= effTtlMs * 2 && !isValEmpty) {
+        options?.tracker?.recordCacheStale();
+        triggerBackgroundRefresh(key, ttlSeconds, loader, options);
+        return l2Record.value;
+      }
     }
   }
 
@@ -221,10 +239,21 @@ export async function getOrSet<T>(
     flightPromise = (async () => {
       try {
         const freshValue = await loader();
+        const isFreshEmpty = isValueEmpty(freshValue);
+
+        // If fresh value is empty and negative caching is not enabled, do not cache!
+        if (isFreshEmpty && !options?.isNegative) {
+          return freshValue;
+        }
+
+        const effectiveTtl = isFreshEmpty && options?.negativeTtlSeconds
+          ? options.negativeTtlSeconds
+          : ttlSeconds;
+
         const record: CacheRecord<T> = {
           value: freshValue,
           fetchedAt: Date.now(),
-          ttlSeconds,
+          ttlSeconds: effectiveTtl,
         };
 
         // Write L1
@@ -232,7 +261,7 @@ export async function getOrSet<T>(
 
         // Write L2 (non-blocking)
         if (upstash) {
-          upstash.set(key, record, ttlSeconds).catch(() => {});
+          upstash.set(key, record, effectiveTtl).catch(() => {});
         } else {
           setInPrisma(key, record).catch(() => {});
         }
@@ -278,11 +307,14 @@ export async function peekCacheRecord<T>(
   // 1. L1
   const l1Record = memoryL1.get<T>(key);
   if (l1Record) {
-    const age = now - l1Record.fetchedAt;
-    const ttlMs = l1Record.ttlSeconds * 1000;
-    if (age <= ttlMs) {
-      options?.tracker?.recordCacheHit();
-      return l1Record.value;
+    const isValEmpty = isValueEmpty(l1Record.value);
+    if (!isValEmpty || options?.isNegative) {
+      const age = now - l1Record.fetchedAt;
+      const effTtl = isValEmpty && options?.negativeTtlSeconds ? options.negativeTtlSeconds : l1Record.ttlSeconds;
+      if (age <= effTtl * 1000) {
+        options?.tracker?.recordCacheHit();
+        return l1Record.value;
+      }
     }
   }
 
@@ -296,12 +328,15 @@ export async function peekCacheRecord<T>(
   }
 
   if (l2Record) {
-    const age = now - l2Record.fetchedAt;
-    const ttlMs = l2Record.ttlSeconds * 1000;
-    memoryL1.set(key, l2Record);
-    if (age <= ttlMs) {
-      options?.tracker?.recordCacheHit();
-      return l2Record.value;
+    const isValEmpty = isValueEmpty(l2Record.value);
+    if (!isValEmpty || options?.isNegative) {
+      const age = now - l2Record.fetchedAt;
+      const effTtl = isValEmpty && options?.negativeTtlSeconds ? options.negativeTtlSeconds : l2Record.ttlSeconds;
+      memoryL1.set(key, l2Record);
+      if (age <= effTtl * 1000) {
+        options?.tracker?.recordCacheHit();
+        return l2Record.value;
+      }
     }
   }
 
@@ -322,15 +357,22 @@ function triggerBackgroundRefresh<T>(
   const refreshPromise = (async () => {
     try {
       const freshValue = await loader();
+      const isFreshEmpty = isValueEmpty(freshValue);
+      if (isFreshEmpty && !options?.isNegative) {
+        return;
+      }
+      const effectiveTtl = isFreshEmpty && options?.negativeTtlSeconds
+        ? options.negativeTtlSeconds
+        : ttlSeconds;
       const record: CacheRecord<T> = {
         value: freshValue,
         fetchedAt: Date.now(),
-        ttlSeconds,
+        ttlSeconds: effectiveTtl,
       };
       memoryL1.set(key, record);
       const upstash = getUpstashClient();
       if (upstash) {
-        await upstash.set(key, record, ttlSeconds);
+        await upstash.set(key, record, effectiveTtl);
       } else {
         await setInPrisma(key, record);
       }

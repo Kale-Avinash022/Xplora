@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { UnsplashProvider } from '@/lib/images/unsplash';
+import { getAuthenticatedUser } from '@/lib/auth/session';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const authenticatedUser = await getAuthenticatedUser(req);
 
-    if (!userId) {
-      return NextResponse.json([], { status: 200 });
+    if (!authenticatedUser) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in to view saved itineraries.' },
+        { status: 401 }
+      );
     }
 
     const itineraries = await prisma.itinerary.findMany({
-      where: { userId },
+      where: { userId: authenticatedUser.id },
       include: {
         dayPlans: {
           include: {
@@ -35,15 +38,18 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { title, destination, durationDays, budget, currency = 'INR', travelStyle = 'General', userId, dayPlans } = body;
+    const authenticatedUser = await getAuthenticatedUser(req);
 
-    if (!userId) {
+    if (!authenticatedUser) {
       return NextResponse.json(
         { error: 'Authentication required. Please log in to save itineraries to your account.' },
         { status: 401 }
       );
     }
+
+    const body = await req.json();
+    // Step 72: Body parsing strictly excludes client-supplied userId. Server derives identity from session.
+    const { title, destination, durationDays, budget, currency = 'INR', travelStyle = 'General', dayPlans } = body;
 
     if (!title || !destination || !dayPlans) {
       return NextResponse.json(
@@ -60,7 +66,7 @@ export async function POST(req: Request) {
         budget: Number(budget),
         currency,
         travelStyle,
-        userId: userId,
+        userId: authenticatedUser.id,
         dayPlans: {
           create: dayPlans.map((dp: any) => ({
             dayNumber: dp.dayNumber,

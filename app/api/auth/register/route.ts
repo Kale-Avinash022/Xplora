@@ -41,10 +41,20 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { message: 'Registration successful!', user },
       { status: 201 }
     );
+
+    response.cookies.set({
+      name: 'xplora_user',
+      value: JSON.stringify({ id: user.id, name: user.name, email: user.email }),
+      httpOnly: false,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
   } catch (error) {
     console.error('Register API Error:', error);
     return NextResponse.json(

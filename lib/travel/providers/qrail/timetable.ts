@@ -598,6 +598,646 @@ export const VERIFIED_SCHEDULES: Record<string, VerifiedTrainSchedule[]> = {
       startingPrice: 3120,
     },
   ],
+
+  // Nagpur to Mumbai (NGP -> CSMT/LTT)
+  'NGP-CSMT': [
+    {
+      trainNumber: '12290',
+      trainName: 'Nagpur Mumbai CSMT Duronto Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '20:40',
+      arrivalTime: '08:05',
+      duration: '11h 25m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '3E', name: 'AC 3 Economy (3E)', fare: 1460, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1560, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 2210, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 3680, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1460,
+    },
+    {
+      trainNumber: '12106',
+      trainName: 'Vidarbha Superfast Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '17:00',
+      arrivalTime: '06:50',
+      duration: '13h 50m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 250, statusText: 'CHECK ON IRCTC' },
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2840, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 250,
+    },
+    {
+      trainNumber: '12860',
+      trainName: 'Gitanjali Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '07:45',
+      arrivalTime: '21:20',
+      duration: '13h 35m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 445,
+    },
+    {
+      trainNumber: '12140',
+      trainName: 'Sewagram Superfast Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '21:15',
+      arrivalTime: '12:00',
+      duration: '14h 45m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 250, statusText: 'CHECK ON IRCTC' },
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 250,
+    },
+    {
+      trainNumber: '12810',
+      trainName: 'Howrah Mumbai CSMT Mail',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '14:00',
+      arrivalTime: '04:25',
+      duration: '14h 25m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2840, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 445,
+    },
+  ],
+
+  // Mumbai to Nagpur (CSMT/LTT -> NGP)
+  'CSMT-NGP': [
+    {
+      trainNumber: '12289',
+      trainName: 'Mumbai CSMT Nagpur Duronto Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '20:15',
+      arrivalTime: '07:20',
+      duration: '11h 05m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '3E', name: 'AC 3 Economy (3E)', fare: 1460, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1560, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 2210, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 3680, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1460,
+    },
+    {
+      trainNumber: '12105',
+      trainName: 'Vidarbha Superfast Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '19:05',
+      arrivalTime: '08:55',
+      duration: '13h 50m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 250, statusText: 'CHECK ON IRCTC' },
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2840, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 250,
+    },
+    {
+      trainNumber: '12859',
+      trainName: 'Gitanjali Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '06:00',
+      arrivalTime: '18:55',
+      duration: '12h 55m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 445,
+    },
+    {
+      trainNumber: '12139',
+      trainName: 'Sewagram Superfast Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '14:55',
+      arrivalTime: '05:45',
+      duration: '14h 50m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 250, statusText: 'CHECK ON IRCTC' },
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 250,
+    },
+    {
+      trainNumber: '12809',
+      trainName: 'Mumbai CSMT Howrah Mail',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '21:10',
+      arrivalTime: '11:10',
+      duration: '14h 00m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 445, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1180, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1690, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2840, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 445,
+    },
+  ],
+
+  // Mumbai to Pune (CSMT -> PUNE)
+  'CSMT-PUNE': [
+    {
+      trainNumber: '12123',
+      trainName: 'Deccan Queen Superfast Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'PUNE',
+      toStationName: 'Pune Junction',
+      departureTime: '17:10',
+      arrivalTime: '20:25',
+      duration: '3h 15m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+    {
+      trainNumber: '12125',
+      trainName: 'Pragati Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'PUNE',
+      toStationName: 'Pune Junction',
+      departureTime: '16:25',
+      arrivalTime: '19:50',
+      duration: '3h 25m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+    {
+      trainNumber: '22225',
+      trainName: 'Mumbai CSMT Solapur Vande Bharat Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'PUNE',
+      toStationName: 'Pune Junction',
+      departureTime: '16:05',
+      arrivalTime: '19:10',
+      duration: '3h 05m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Fri', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 660, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 1270, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 660,
+    },
+    {
+      trainNumber: '12127',
+      trainName: 'Mumbai CSMT Pune Intercity Express',
+      fromStation: 'CSMT',
+      fromStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      toStation: 'PUNE',
+      toStationName: 'Pune Junction',
+      departureTime: '06:40',
+      arrivalTime: '09:57',
+      duration: '3h 17m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+  ],
+
+  // Pune to Mumbai (PUNE -> CSMT)
+  'PUNE-CSMT': [
+    {
+      trainNumber: '12124',
+      trainName: 'Deccan Queen Superfast Express',
+      fromStation: 'PUNE',
+      fromStationName: 'Pune Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '07:15',
+      arrivalTime: '10:25',
+      duration: '3h 10m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+    {
+      trainNumber: '12126',
+      trainName: 'Pragati Express',
+      fromStation: 'PUNE',
+      fromStationName: 'Pune Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '07:50',
+      arrivalTime: '11:15',
+      duration: '3h 25m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+    {
+      trainNumber: '22226',
+      trainName: 'Solapur Mumbai CSMT Vande Bharat Express',
+      fromStation: 'PUNE',
+      fromStationName: 'Pune Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '09:15',
+      arrivalTime: '12:35',
+      duration: '3h 20m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 660, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 1270, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 660,
+    },
+    {
+      trainNumber: '12128',
+      trainName: 'Pune Mumbai CSMT Intercity Express',
+      fromStation: 'PUNE',
+      fromStationName: 'Pune Junction',
+      toStation: 'CSMT',
+      toStationName: 'Chhatrapati Shivaji Maharaj Terminus',
+      departureTime: '17:55',
+      arrivalTime: '21:05',
+      duration: '3h 10m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 105, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 385, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 105,
+    },
+  ],
+
+  // Nagpur to New Delhi (NGP -> NDLS)
+  'NGP-NDLS': [
+    {
+      trainNumber: '22691',
+      trainName: 'KSR Bengaluru New Delhi Rajdhani Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'NDLS',
+      toStationName: 'Hazrat Nizamuddin / New Delhi',
+      departureTime: '15:00',
+      arrivalTime: '05:30',
+      duration: '14h 30m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 2420, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 3340, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 4180, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 2420,
+    },
+    {
+      trainNumber: '12723',
+      trainName: 'Telangana Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'NDLS',
+      toStationName: 'New Delhi Railway Station',
+      departureTime: '15:25',
+      arrivalTime: '07:40',
+      duration: '16h 15m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 520, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1370, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1960, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 3320, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 520,
+    },
+    {
+      trainNumber: '12615',
+      trainName: 'Grand Trunk Express',
+      fromStation: 'NGP',
+      fromStationName: 'Nagpur Junction',
+      toStation: 'NDLS',
+      toStationName: 'New Delhi Railway Station',
+      departureTime: '11:35',
+      arrivalTime: '06:35',
+      duration: '19h 00m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 520, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1370, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1960, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 520,
+    },
+  ],
+
+  // New Delhi to Nagpur (NDLS -> NGP)
+  'NDLS-NGP': [
+    {
+      trainNumber: '22692',
+      trainName: 'New Delhi KSR Bengaluru Rajdhani Express',
+      fromStation: 'NDLS',
+      fromStationName: 'Hazrat Nizamuddin / New Delhi',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '19:50',
+      arrivalTime: '09:20',
+      duration: '13h 30m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 2420, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 3340, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 4180, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 2420,
+    },
+    {
+      trainNumber: '12724',
+      trainName: 'Telangana Express',
+      fromStation: 'NDLS',
+      fromStationName: 'New Delhi Railway Station',
+      toStation: 'NGP',
+      toStationName: 'Nagpur Junction',
+      departureTime: '16:00',
+      arrivalTime: '07:10',
+      duration: '15h 10m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 520, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1370, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1960, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 3320, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 520,
+    },
+  ],
+
+  // Mumbai to Ahmedabad (CSMT/MMCT -> ADI)
+  'CSMT-ADI': [
+    {
+      trainNumber: '20901',
+      trainName: 'Vande Bharat Express',
+      fromStation: 'MMCT',
+      fromStationName: 'Mumbai Central',
+      toStation: 'ADI',
+      toStationName: 'Ahmedabad Junction',
+      departureTime: '06:00',
+      arrivalTime: '11:25',
+      duration: '5h 25m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1200, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 2295, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1200,
+    },
+    {
+      trainNumber: '12933',
+      trainName: 'Karnavati Express',
+      fromStation: 'MMCT',
+      fromStationName: 'Mumbai Central',
+      toStation: 'ADI',
+      toStationName: 'Ahmedabad Junction',
+      departureTime: '14:05',
+      arrivalTime: '21:05',
+      duration: '7h 00m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 190, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 190,
+    },
+  ],
+
+  // Ahmedabad to Mumbai (ADI -> CSMT/MMCT)
+  'ADI-CSMT': [
+    {
+      trainNumber: '20902',
+      trainName: 'Vande Bharat Express',
+      fromStation: 'ADI',
+      fromStationName: 'Ahmedabad Junction',
+      toStation: 'MMCT',
+      toStationName: 'Mumbai Central',
+      departureTime: '16:45',
+      arrivalTime: '22:15',
+      duration: '5h 30m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1200, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 2295, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1200,
+    },
+    {
+      trainNumber: '12934',
+      trainName: 'Karnavati Express',
+      fromStation: 'ADI',
+      fromStationName: 'Ahmedabad Junction',
+      toStation: 'MMCT',
+      toStationName: 'Mumbai Central',
+      departureTime: '05:00',
+      arrivalTime: '12:20',
+      duration: '7h 20m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: '2S', name: 'Second Sitting (2S)', fare: 190, statusText: 'CHECK ON IRCTC' },
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 690, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 190,
+    },
+  ],
+
+  // New Delhi to Bhopal (NDLS -> BPL/RKMP)
+  'NDLS-BPL': [
+    {
+      trainNumber: '20172',
+      trainName: 'Rani Kamlapati Vande Bharat Express',
+      fromStation: 'NDLS',
+      fromStationName: 'Hazrat Nizamuddin / New Delhi',
+      toStation: 'BPL',
+      toStationName: 'Rani Kamlapati (Habibganj)',
+      departureTime: '14:40',
+      arrivalTime: '22:10',
+      duration: '7h 30m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1665, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 3120, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1665,
+    },
+    {
+      trainNumber: '12002',
+      trainName: 'Bhopal Shatabdi Express',
+      fromStation: 'NDLS',
+      fromStationName: 'New Delhi Railway Station',
+      toStation: 'BPL',
+      toStationName: 'Rani Kamlapati (Habibganj)',
+      departureTime: '06:00',
+      arrivalTime: '14:40',
+      duration: '8h 40m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1495, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 2625, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1495,
+    },
+  ],
+
+  // Bhopal to New Delhi (BPL/RKMP -> NDLS)
+  'BPL-NDLS': [
+    {
+      trainNumber: '20171',
+      trainName: 'Hazrat Nizamuddin Vande Bharat Express',
+      fromStation: 'BPL',
+      fromStationName: 'Rani Kamlapati (Habibganj)',
+      toStation: 'NDLS',
+      toStationName: 'Hazrat Nizamuddin / New Delhi',
+      departureTime: '05:40',
+      arrivalTime: '13:10',
+      duration: '7h 30m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1665, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 3120, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1665,
+    },
+    {
+      trainNumber: '12001',
+      trainName: 'New Delhi Shatabdi Express',
+      fromStation: 'BPL',
+      fromStationName: 'Rani Kamlapati (Habibganj)',
+      toStation: 'NDLS',
+      toStationName: 'New Delhi Railway Station',
+      departureTime: '15:15',
+      arrivalTime: '23:50',
+      duration: '8h 35m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'CC', name: 'AC Chair Car (CC)', fare: 1495, statusText: 'CHECK ON IRCTC' },
+        { code: 'EC', name: 'Executive Chair Car (EC)', fare: 2625, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 1495,
+    },
+  ],
+
+  // Chennai to Hyderabad (MAS -> SC/HYB)
+  'MAS-SC': [
+    {
+      trainNumber: '12759',
+      trainName: 'Charminar Superfast Express',
+      fromStation: 'MAS',
+      fromStationName: 'MGR Chennai Central',
+      toStation: 'SC',
+      toStationName: 'Secunderabad Junction',
+      departureTime: '18:10',
+      arrivalTime: '08:00',
+      duration: '13h 50m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 410, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1090, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1560, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2640, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 410,
+    },
+  ],
+
+  // Hyderabad to Chennai (SC/HYB -> MAS)
+  'SC-MAS': [
+    {
+      trainNumber: '12760',
+      trainName: 'Charminar Superfast Express',
+      fromStation: 'SC',
+      fromStationName: 'Secunderabad Junction',
+      toStation: 'MAS',
+      toStationName: 'MGR Chennai Central',
+      departureTime: '18:00',
+      arrivalTime: '07:55',
+      duration: '13h 55m',
+      runningDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      classes: [
+        { code: 'SL', name: 'Sleeper Class (SL)', fare: 410, statusText: 'CHECK ON IRCTC' },
+        { code: '3A', name: 'AC 3 Tier (3A)', fare: 1090, statusText: 'CHECK ON IRCTC' },
+        { code: '2A', name: 'AC 2 Tier (2A)', fare: 1560, statusText: 'CHECK ON IRCTC' },
+        { code: '1A', name: 'AC First Class (1A)', fare: 2640, statusText: 'CHECK ON IRCTC' },
+      ],
+      startingPrice: 410,
+    },
+  ],
 };
 
 /**
@@ -618,6 +1258,11 @@ export function getVerifiedScheduleForRoute(
   // Chennai group: MAS, MS -> MAS
   // Kolkata group: HWH, SDAH, KOAA -> HWH
   // Goa group: MAO, THVM, KRMI -> MAO
+  // Bhopal group: BPL, RKMP -> BPL
+  // Hyderabad group: SC, HYB, KCG -> SC
+  // Ahmedabad: ADI -> ADI
+  // Nagpur: NGP -> NGP
+  // Pune: PUNE -> PUNE
 
   const normalizeGroup = (code: string) => {
     if (['CSMT', 'MMCT', 'BCT', 'BDTS', 'LTT'].includes(code)) return 'CSMT';
@@ -626,6 +1271,8 @@ export function getVerifiedScheduleForRoute(
     if (['MAS', 'MS'].includes(code)) return 'MAS';
     if (['HWH', 'SDAH', 'KOAA'].includes(code)) return 'HWH';
     if (['MAO', 'THVM', 'KRMI'].includes(code)) return 'MAO';
+    if (['BPL', 'RKMP'].includes(code)) return 'BPL';
+    if (['SC', 'HYB', 'KCG'].includes(code)) return 'SC';
     return code;
   };
 
@@ -637,10 +1284,29 @@ export function getVerifiedScheduleForRoute(
     return null;
   }
 
+  // Filter by day of week if valid date is provided
+  let activeTrains = scheduleList;
+  if (date) {
+    try {
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) {
+        const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const runningOnDay = scheduleList.filter(
+          (t) => !t.runningDays || t.runningDays.includes(dayOfWeek)
+        );
+        if (runningOnDay.length > 0) {
+          activeTrains = runningOnDay;
+        }
+      }
+    } catch {
+      // Fall back to full list
+    }
+  }
+
   const nowIso = new Date().toISOString();
   const bookingUrl = 'https://www.irctc.co.in/nget/train-search';
 
-  return scheduleList.map((item, idx) => ({
+  return activeTrains.map((item, idx) => ({
     id: `irctc-${item.trainNumber}-${item.fromStation}-${item.toStation}`,
     providerName: 'Indian Railways Official Timetable (NTES Schedule)',
     trainNumber: item.trainNumber,

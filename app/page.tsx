@@ -193,7 +193,7 @@ import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { InteractiveMap } from '@/components/InteractiveMap'
 import { FlightOption } from '@/app/api/flights/route'
 import { HotelOption } from '@/app/api/hotels/route'
-import { BookingArea, TransportMode, CabinClass, TravelSearchEnvelope, StayOption, TripProposal, TrainOption, BusOption, TrackedTicket } from '@/lib/types'
+import { BookingArea, TransportMode, CabinClass, TravelSearchEnvelope, StayOption, TripProposal, TrainOption, BusOption, TrackedTicket, TrackedHotelBooking } from '@/lib/types'
 import { validateFlightQuery, validateStayQuery, validateTrainQuery, validateBusQuery, getTodayIsoDate } from '@/lib/travel/validation'
 import { exportItineraryToPDF, exportToGoogleCalendar, exportToICS } from '@/lib/exportUtils'
 import { SUPPORTED_CURRENCIES, convertAmount } from '@/lib/currencyUtils'
@@ -418,24 +418,34 @@ export default function Home() {
   const [chatProposalNotice, setChatProposalNotice] = useState<string | null>(null)
   const [highlightPlanner, setHighlightPlanner] = useState(false)
 
-  // Track Ticket State (Phase 7 Ticket Tracking)
+  // Track Ticket & Hotel State (Phase 7 Ticket & Hotel Tracking)
   const [showTrackTicketModal, setShowTrackTicketModal] = useState(false)
+  const [trackModalSection, setTrackModalSection] = useState<'TRAVEL' | 'HOTEL'>('TRAVEL')
   const [trackedTickets, setTrackedTickets] = useState<TrackedTicket[]>([])
+  const [trackedHotels, setTrackedHotels] = useState<TrackedHotelBooking[]>([])
   const [ticketToast, setTicketToast] = useState<{ message: string; type: string } | null>(null)
 
-  // Load tracked tickets from localStorage
+  // Load tracked tickets and hotels from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('xplora_tracked_tickets')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed)) {
-            setTrackedTickets(parsed)
+        const savedTickets = localStorage.getItem('xplora_tracked_tickets')
+        if (savedTickets) {
+          const parsedTickets = JSON.parse(savedTickets)
+          if (Array.isArray(parsedTickets)) {
+            setTrackedTickets(parsedTickets)
+          }
+        }
+
+        const savedHotels = localStorage.getItem('xplora_tracked_hotels')
+        if (savedHotels) {
+          const parsedHotels = JSON.parse(savedHotels)
+          if (Array.isArray(parsedHotels)) {
+            setTrackedHotels(parsedHotels)
           }
         }
       } catch (err) {
-        console.error('Failed to parse tracked tickets from storage:', err)
+        console.error('Failed to parse tracked bookings from storage:', err)
       }
     }
   }, [])
@@ -453,7 +463,7 @@ export default function Home() {
 
     const typeLabel = ticket.type === 'TRAIN' ? '🚆 Train Ticket' : ticket.type === 'FLIGHT' ? '✈️ Flight Ticket' : '🚌 Bus Ticket'
     setTicketToast({
-      message: `${typeLabel} added to Track Ticket! (${ticket.title})`,
+      message: `${typeLabel} added to Track Bookings! (${ticket.title})`,
       type: ticket.type,
     })
 
@@ -487,6 +497,57 @@ export default function Home() {
       const updated = [ticket, ...prev]
       if (typeof window !== 'undefined') {
         localStorage.setItem('xplora_tracked_tickets', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
+
+  // Handlers for Tracked Hotels (Booking.com Handoff & Manual Tracking)
+  const handleTrackHotel = useCallback((hotel: TrackedHotelBooking) => {
+    setTrackedHotels((prev) => {
+      const filtered = prev.filter((h) => h.id !== hotel.id && h.bookingRef !== hotel.bookingRef)
+      const updated = [hotel, ...filtered]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_hotels', JSON.stringify(updated))
+      }
+      return updated
+    })
+
+    setTicketToast({
+      message: `🏨 Hotel booking tracked! (${hotel.hotelName})`,
+      type: 'HOTEL',
+    })
+
+    setTimeout(() => {
+      setTicketToast((current) => (current?.message.includes(hotel.hotelName) ? null : current))
+    }, 6000)
+  }, [])
+
+  const handleRemoveHotel = useCallback((id: string) => {
+    setTrackedHotels((prev) => {
+      const updated = prev.filter((h) => h.id !== id)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_hotels', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
+
+  const handleUpdateHotelRef = useCallback((id: string, newRef: string) => {
+    setTrackedHotels((prev) => {
+      const updated = prev.map((h) => (h.id === id ? { ...h, bookingRef: newRef } : h))
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_hotels', JSON.stringify(updated))
+      }
+      return updated
+    })
+  }, [])
+
+  const handleAddManualHotel = useCallback((hotel: TrackedHotelBooking) => {
+    setTrackedHotels((prev) => {
+      const updated = [hotel, ...prev]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('xplora_tracked_hotels', JSON.stringify(updated))
       }
       return updated
     })
@@ -1048,15 +1109,18 @@ export default function Home() {
           budget: generatedPlan.totalBudget,
           currency: generatedPlan.currency,
           travelStyle: generatedPlan.travelStyle,
-          userId: currentUser.id,
           dayPlans: generatedPlan.dayPlans,
         }),
       })
 
       const data = await res.json()
 
-      if (!res.ok) {
-        setAuthErrorMsg(data.error || 'Failed to save itinerary.')
+      if (!res.ok || !data.itinerary?.id) {
+        if (res.status === 401) {
+          setAuthErrorMsg('⚠️ Session expired or required. Please log in to save itineraries.')
+        } else {
+          setAuthErrorMsg(data.error || 'Failed to save itinerary.')
+        }
       } else {
         setSaveSuccess(true)
         setTimeout(() => {
@@ -2841,6 +2905,14 @@ export default function Home() {
                     : handleSearchFlights
             }
             onTrackTicket={handleTrackTicket}
+            onTrackHotel={handleTrackHotel}
+            staySearchMeta={{
+              destination: stayDestination,
+              checkIn: stayCheckIn,
+              checkOut: stayCheckOut,
+              guests: stayGuests,
+              rooms: stayRooms,
+            }}
             trainSearchMeta={{
               date: trainDate,
               class: trainClass,
@@ -2858,7 +2930,10 @@ export default function Home() {
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <div 
-            onClick={() => setShowTrackTicketModal(true)}
+            onClick={() => {
+              setTrackModalSection('TRAVEL');
+              setShowTrackTicketModal(true);
+            }}
             className="bg-white rounded-xl shadow-lg p-6 border-t-4 transition hover:shadow-xl cursor-pointer group hover:scale-[1.02] duration-200 focus:outline-none focus:ring-2 focus:ring-[#526B57]" 
             style={{ borderColor: '#526B57' }}
             role="button"
@@ -2872,14 +2947,14 @@ export default function Home() {
           >
             <div className="flex items-start justify-between">
               <div className="text-3xl mb-2 transition-transform duration-200 group-hover:scale-110">🎫</div>
-              {trackedTickets.length > 0 && (
+              {(trackedTickets.length > 0 || trackedHotels.length > 0) && (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#526B57] text-white shadow-xs">
-                  {trackedTickets.length} {trackedTickets.length === 1 ? 'Ticket' : 'Tickets'}
+                  {trackedTickets.length + trackedHotels.length} {trackedTickets.length + trackedHotels.length === 1 ? 'Booking' : 'Bookings'}
                 </span>
               )}
             </div>
             <h3 className="font-bold text-lg mb-1 flex items-center justify-between" style={{ fontFamily: 'Playfair Display, serif', color: '#292A25' }}>
-              <span>Track Ticket</span>
+              <span>Track Bookings</span>
               <span className="text-xs text-[#526B57] font-sans font-normal group-hover:translate-x-1 transition-transform">Check Status →</span>
             </h3>
             <p className="text-sm" style={{ color: '#526B57' }}>Check your booking status</p>
@@ -2929,26 +3004,40 @@ export default function Home() {
         onSelectTrip={handleSelectSavedTrip}
       />
 
-      {/* Track Ticket Window Modal */}
+      {/* Track Bookings Window Modal */}
       <TrackTicketModal
         isOpen={showTrackTicketModal}
         onClose={() => setShowTrackTicketModal(false)}
         tickets={trackedTickets}
+        hotels={trackedHotels}
         onRemoveTicket={handleRemoveTicket}
         onUpdatePnr={handleUpdatePnr}
         onAddTicket={handleAddManualTicket}
+        onRemoveHotel={handleRemoveHotel}
+        onUpdateHotelRef={handleUpdateHotelRef}
+        onAddHotel={handleAddManualHotel}
+        initialSection={trackModalSection}
       />
 
-      {/* Floating Ticket Tracked Toast Notification */}
+      {/* Floating Ticket / Booking Tracked Toast Notification */}
       {ticketToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#263D32] text-white px-5 py-3.5 rounded-xl shadow-2xl border border-emerald-400/40 flex items-center gap-3 animate-slideUp">
-          <span className="text-xl">🎟️</span>
+          <span className="text-xl">{ticketToast.type === 'HOTEL' ? '🏨' : '🎟️'}</span>
           <div>
-            <div className="text-xs font-bold text-emerald-300">Ticket Tracked</div>
+            <div className="text-xs font-bold text-emerald-300">
+              {ticketToast.type === 'HOTEL' ? 'Hotel Tracked' : 'Ticket Tracked'}
+            </div>
             <div className="text-xs text-white">{ticketToast.message}</div>
           </div>
           <button 
-            onClick={() => setShowTrackTicketModal(true)}
+            onClick={() => {
+              if (ticketToast.type === 'HOTEL') {
+                setTrackModalSection('HOTEL');
+              } else {
+                setTrackModalSection('TRAVEL');
+              }
+              setShowTrackTicketModal(true);
+            }}
             className="ml-2 px-2.5 py-1 text-xs font-bold rounded bg-[#C6A96B] text-[#263D32] hover:bg-[#d8bb7a] transition cursor-pointer"
           >
             View
@@ -2966,6 +3055,7 @@ export default function Home() {
       {/* Step 3.3 Floating AI Assistant Chatbot */}
       <AIChatDrawer
         currentItinerary={generatedPlan}
+        currentUser={currentUser}
         onUpdateItinerary={(newPlan) => setGeneratedPlan(newPlan)}
         onCreateTripFromChat={handleCreateTripFromChat}
         onExecuteActionCommand={handleExecuteActionCommand}

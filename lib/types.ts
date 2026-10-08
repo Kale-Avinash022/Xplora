@@ -266,3 +266,26 @@ export interface TrackedTicket {
   bookingUrl?: string;
   bookedAt: string;
 }
+
+export interface TrackedHotelBooking {
+  id: string;
+  hotelName: string;
+  hotelType?: string;
+  location: string;
+  checkIn: string;
+  checkOut: string;
+  guests?: number | string;
+  rooms?: number | string;
+  pricePerNight?: number;
+  totalPrice?: number;
+  currency?: string;
+  rating?: number;
+  reviewsCount?: number;
+  amenities?: string[];
+  bookingRef: string;
+  bookingStatus: string;
+  provider: string;
+  bookingUrl: string;
+  bookedAt: string;
+}
+

@@ -38,12 +38,16 @@ export function MyTripsModal({ isOpen, onClose, currentUser, onSelectTrip }: MyT
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/itineraries?userId=${currentUser.id}`);
+      const res = await fetch('/api/itineraries');
       if (res.ok) {
         const data = await res.json();
         setTrips(data);
       } else {
-        setError('Failed to fetch your saved trips.');
+        if (res.status === 401) {
+          setError('Session expired or required. Please log in again to view your saved trips.');
+        } else {
+          setError('Failed to fetch your saved trips.');
+        }
       }
     } catch (err) {
       console.error('Fetch trips error:', err);

@@ -122,32 +122,7 @@ async function handleTrainSearch(rawParams: Record<string, any>) {
     );
   }
 
-  // 3. Server Capability & API Key Gate
-  const caps = getServerCapabilities();
-  const apiKey = getQrailApiKey();
-
-  if (!caps.liveTrainsEnabled || !apiKey) {
-    const envelope: TravelSearchEnvelope<TrainOption> = {
-      query,
-      status: 'UNAVAILABLE',
-      results: [],
-      count: 0,
-      notice: 'Live railway search service is currently unconfigured or unavailable on this server. Check back shortly.',
-    };
-    return NextResponse.json(
-      {
-        ...envelope,
-        trains: [],
-        from: query.origin,
-        to: query.destination,
-        date: query.date,
-        unavailable: true,
-      },
-      { status: 503 }
-    );
-  }
-
-  // 4. Execute provider search (Qrail Provider)
+  // 3. Execute search via Qrail provider adapter or verified timetable schedule
   const envelope = await searchTrainsWithQrail(query);
 
   const httpStatus =
@@ -164,6 +139,7 @@ async function handleTrainSearch(rawParams: Record<string, any>) {
       from: query.origin,
       to: query.destination,
       date: query.date,
+      unavailable: envelope.status === 'UNAVAILABLE',
     },
     { status: httpStatus }
   );

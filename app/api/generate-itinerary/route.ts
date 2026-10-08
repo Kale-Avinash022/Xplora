@@ -127,6 +127,38 @@ export async function POST(req: Request) {
     });
 
     if (cachedResponse) {
+      const hasOnlyPlaceholders =
+        (!cachedResponse.usedImageProviders || cachedResponse.usedImageProviders.length === 0) &&
+        cachedResponse.dayPlans.some((dp) => dp.activities.some((a) => a.image?.isPlaceholder || !a.image?.url));
+
+      if (hasOnlyPlaceholders) {
+        try {
+          const tripAssignmentInput = cachedResponse.dayPlans.map((dp) => ({
+            dayNumber: dp.dayNumber,
+            activities: dp.activities.map((act) => ({
+              id: act.id,
+              title: act.title,
+              kindsStr: act.kindLabel || act.category || '',
+            })),
+          }));
+          const imgRes = await ImageService.assignImagesToTrip(cleanDest, tripAssignmentInput);
+          if (imgRes.usedProviders.length > 0) {
+            cachedResponse.usedImageProviders = imgRes.usedProviders;
+            for (const dp of cachedResponse.dayPlans) {
+              for (const act of dp.activities) {
+                const assigned = imgRes.photoMap.get(act.id);
+                if (assigned && !assigned.isPlaceholder) {
+                  act.image = assigned;
+                }
+              }
+            }
+            setCacheRecord(tripCacheKey, cachedResponse, CACHE_TTLS.FINISHED_ITINERARY).catch(() => {});
+          }
+        } catch (enrichErr) {
+          console.warn('[Generate Itinerary] Failed to enrich cached itinerary with images:', enrichErr);
+        }
+      }
+
       tracker.logMetrics();
       return NextResponse.json(cachedResponse, {
         status: 200,

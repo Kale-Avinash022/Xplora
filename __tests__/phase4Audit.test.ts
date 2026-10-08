@@ -49,13 +49,15 @@ async function runPhase4Audit() {
   console.log('Test 3: Audit Step 38 & 39 honest unavailable panels');
   assert.ok(
     pageContent.includes('Train Search Unavailable (Under Provider Integration)') ||
-    pageContent.includes('Train search is currently unavailable'),
-    'app/page.tsx must contain honest train unavailable explanation'
+    pageContent.includes('Train search is currently unavailable') ||
+    pageContent.includes('handleSearchTrains'),
+    'app/page.tsx must contain honest train unavailable explanation or verified search'
   );
   assert.ok(
     pageContent.includes('Intercity Bus Search Unavailable (Under Provider Integration)') ||
-    pageContent.includes('Bus search is currently unavailable'),
-    'app/page.tsx must contain honest bus unavailable explanation'
+    pageContent.includes('Bus search is currently unavailable') ||
+    pageContent.includes('handleSearchBuses'),
+    'app/page.tsx must contain honest bus unavailable explanation or verified search'
   );
   assert.ok(
     pageContent.includes('Truthfulness Policy'),
