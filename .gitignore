@@ -9,6 +9,7 @@
 # Next.js
 /.next/
 /out/
+.turbo
 
 # Production
 /build
@@ -16,10 +17,19 @@
 # Misc & OS files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
 *.pem
 *.key
 *.cert
 *.crt
+
+# IDEs and Editors
+.idea/
+*.swp
+*.swo
+*~
+
 
 # Debug & Logs
 npm-debug.log*
@@ -66,6 +76,8 @@ backend/__pycache__/
 *$py.class
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Archives
 *.zip
