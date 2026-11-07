@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "backend": "cd backend && .\\venv\\Scripts\\uvicorn.exe main:app --reload --port 8000",
     "test": "npx tsx scripts/runTests.ts"
   },
   "dependencies": {
